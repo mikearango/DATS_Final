@@ -24,7 +24,7 @@ library(lubridate)
 ```
 
 ```{r df summary, message = FALSE}
-df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = TRUE) #na.strings = "EMPTY"
+df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE) #na.strings = "EMPTY"
 glimpse(df)
 ```
 
