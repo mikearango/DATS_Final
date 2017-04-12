@@ -113,4 +113,28 @@ df <- df[(df$gr.liv.area < 4500),]
 ```
 
 
+Check to see if any houses have been resold
+```{r include=FALSE}
+any(table(df$pid)>1)
+```
+Any houses resold: `r any(table(df$pid)>1)`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
