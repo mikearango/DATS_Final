@@ -17,14 +17,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Initializing Packages and Importing Data
 ```{r init, message = FALSE}
-library(readxl)
+library(gdata)
 library(tidyverse)
 library(stringr)
 library(lubridate)
+
 ```
 
-```{r df summary}
-df = read_excel('./data/AmesHousing.xls')
+```{r dfsummary, message = FALSE}
+df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = TRUE)
 glimpse(df)
 ```
 
