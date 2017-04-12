@@ -21,12 +21,17 @@ library(gdata)
 library(tidyverse)
 library(stringr)
 library(lubridate)
-
 ```
 
-```{r dfsummary, message = FALSE}
-df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = TRUE)
+```{r df summary, message = FALSE}
+df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = TRUE) #na.strings = "EMPTY"
 glimpse(df)
+```
+
+We will adopt a standard variable naming convention where all variables are lowercase and words are concatenated with periods.
+```{r fix col names}
+names(df) <- tolower(names(df))
+names(df)
 ```
 
 ## Description of Dataset
@@ -35,6 +40,66 @@ The dataset we chose to use for our project contains information on residential 
 Of the `r dim(df)[2]` variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are continuous. The variables included are basic characteristics that anyone wanting to buy a house would be interested in. For the most part, the different variables may be split up into specific groups. In general, the 20 continuous variables relate measurements of area dimensions for each observation. These include, among others, the sizes of lots, rooms, porches, and garages. The 14 discrete variables mostly have to do with the number of bedrooms, bathrooms, kitchens, etc. that a given property has. There are several geographic categorical variables that start profiling properties at the individual Parcel ID level and end at the neighborhood level. The rest of the nominal variables identify characteristics of the property and dwelling type/structure. Most of the ordinal variables are rankings of the quality/condition of rooms and lot characteristics. For more information on the variables in the dataset, consult the `DataDescription.txt` file in the data directory. 
 
 [^1]: *Journal of Statistics Education*, Volume 19, Number 3(2011), accessed April 11, 2017 at www.amstat.org/publications/jse/v19n3/decock.pdf
+
+# CLeaning 
+```{r missing by col}
+# Are there any missing values in the data
+any(is.na(df))
+# How many are there
+sum(is.na(df))
+# return index of columns that have missing values 
+na.cols = which(colSums(is.na(df)) > 0)
+# Break down missing values by variable
+sort(colSums(sapply(df[na.cols], is.na)), decreasing = TRUE)
+```
+
+One thing to be aware of is that some variables such as `Alley` have `NA` encoded as a level to specify `No Alley Access`. Thus, these cases are not "missing" values. 
+
+```{r plot helper}
+# This is a helper function to plot the categorical variables in the dataset
+plotCategorical = function(cols, dataframe) {
+  for (col in cols) {
+    # Remove NA's & sort categories by tally
+    order.cols = names(sort(table(df[,col]), decreasing = TRUE))
+    # qplot is ggplot's equivalent of base R's high-level plotting function `plot`
+    num.plot = qplot(dataframe[,col]) +
+      # change bar color 
+      geom_bar(fill = 'cornflowerblue') +
+      # add the value labels to each bar
+      geom_text(aes(label = ..count..), stat='count', vjust=-0.5) +
+      # minimal theme
+      theme_minimal() +
+      # set scales for each plot to go from 0 to max of categorical feature
+      scale_y_continuous(limits = c(0,max(table(dataframe[,col]))*1.1)) +
+      scale_x_discrete(limits = order.cols) +
+      xlab(col) +
+      # rotate x-axis label text 30 degrees and set font size to 12
+      theme(axis.text.x = element_text(angle = 30, size=12))
+     # Show plot and suppress warning messages from plot function
+     suppressWarnings(print(num.plot))
+  }
+}
+```
+
+## Pool Quality 
+Pool quality is an ordinal description of the condition of the pool. It seems there are so many NA's because the houses are in Ames, Iowa and you cannot rate pool quality if a house does not have a pool. Since we have the actual dimensions of the pools for all houses, we can double-check to make sure if this assumption is correct. 
+
+```{r plot pool_qc}
+plotCategorical('pool.qc', df)
+```
+
+The following code will return all rows (if there are any) where the pool area is greater than 0 and the pool quality is missing. 
+
+```{r missing pool_qc}
+df[(df$pool.area > 0) & is.na(df$pool.qc), c('pool.qc','pool.area')]
+```
+
+It appears that no pool quality information is missing for houses that have pools. This checks out as there are 2930 rows, 2917 missing values in the pool quality variable, and 13 recorded pool quality records in the bar chart.
+
+```{r}
+index <- which(is.na(df$pool.qc))
+df[index, 'pool.qc'] <- 'No Pool'
+```
 
 
 
