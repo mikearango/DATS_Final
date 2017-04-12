@@ -22,7 +22,7 @@ head(df)
 ```
 
 ```{r}
-ggplot(data=df, aes(x=Gr.Liv.Area, y=SalePrice)) + geom_point(alpha=.2)
+ggplot(data=df, aes(x=Gr.Liv.Area, y=SalePrice)) + geom_point(alpha=.2, color="#00b9be")
 ```
 
 # Cleaning
