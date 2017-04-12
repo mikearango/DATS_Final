@@ -24,24 +24,30 @@ library(lubridate)
 ```
 
 ```{r df summary, message = FALSE}
-df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = TRUE) #na.strings = "EMPTY"
+df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE) #na.strings = "EMPTY"
 glimpse(df)
 ```
 
 We will adopt a standard variable naming convention where all variables are lowercase and words are concatenated with periods.
+
 ```{r fix col names}
 names(df) <- tolower(names(df))
+# drop the order vairiable
+df <- df %>% 
+  select(everything(), -order)
 names(df)
 ```
 
+We decided to drop the order variable as it is just a duplicate row index and corresponds to the observation number. 
+
 ## Description of Dataset
-The dataset we chose to use for our project contains information on residential property sales that occurred in Ames, Iowa from 2006 to 2010.[^1] Thus, the unit of observation in the dataset is a single property sale in Ames, Iowa in a given year. The dataset contains `r dim(df)[1]` observations and `r dim(df)[2]` variables. 
+The dataset we chose for our project contains information from the Ames Assessor’s Office on residential property sales that occurred in Ames, Iowa from 2006 to 2010.[^1] Thus, the unit of observation in the dataset is a single property sale in Ames, Iowa in a given year. The dataset contains `r dim(df)[1]` observations and `r dim(df)[2]` variables. 
 
 Of the `r dim(df)[2]` variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are continuous. The variables included are basic characteristics that anyone wanting to buy a house would be interested in. For the most part, the different variables may be split up into specific groups. In general, the 20 continuous variables relate measurements of area dimensions for each observation. These include, among others, the sizes of lots, rooms, porches, and garages. The 14 discrete variables mostly have to do with the number of bedrooms, bathrooms, kitchens, etc. that a given property has. There are several geographic categorical variables that start profiling properties at the individual Parcel ID level and end at the neighborhood level. The rest of the nominal variables identify characteristics of the property and dwelling type/structure. Most of the ordinal variables are rankings of the quality/condition of rooms and lot characteristics. For more information on the variables in the dataset, consult the `DataDescription.txt` file in the data directory. 
 
 [^1]: *Journal of Statistics Education*, Volume 19, Number 3(2011), accessed April 11, 2017 at www.amstat.org/publications/jse/v19n3/decock.pdf
 
-# CLeaning 
+# Cleaning 
 ```{r missing by col}
 # Are there any missing values in the data
 any(is.na(df))
@@ -81,10 +87,32 @@ plotCategorical = function(cols, dataframe) {
 }
 ```
 
+## Parcel ID Number
+
+We already saw that the `pid` variable does not have any missing values, but it might be interesting to see if any parcel appears twice. We would be able to see appreciation/depreciation over time if the same house was bought and sold within a 5 year window. 
+
+```{r pid}
+summarise(df,
+          n_obs = n(),
+          n_pid = n_distinct(pid))
+```
+
+Unfortunately, every parcel ID only appears once in the dataset. 
+
+## Dwelling Type
+
+The `ms.subclass` variable specifies the type of dwelling involved in the sale. The variables as coded as an integer and has a key that can be found on the documentation. There are `r n_distinct(df$ms.subclass)` types of dwellings included. Numbers in the 20 t0 85 range represent different traditional style homes and others represent duplexes or other split homes. 
+
+```{r ms.subclass}
+table(df$ms.subclass)
+```
+
+The table shows that most residential sales during this time were one or two-story houses built after 1946. 
+
 ## Pool Quality 
 Pool quality is an ordinal description of the condition of the pool. It seems there are so many NA's because the houses are in Ames, Iowa and you cannot rate pool quality if a house does not have a pool. Since we have the actual dimensions of the pools for all houses, we can double-check to make sure if this assumption is correct. 
 
-```{r plot pool_qc}
+```{r plot pool.qc}
 plotCategorical('pool.qc', df)
 ```
 
@@ -94,23 +122,23 @@ The following code will return all rows (if there are any) where the pool area i
 df[(df$pool.area > 0) & is.na(df$pool.qc), c('pool.qc','pool.area')]
 ```
 
-It appears that no pool quality information is missing for houses that have pools. This checks out as there are 2930 rows, 2917 missing values in the pool quality variable, and 13 recorded pool quality records in the bar chart.
+It appears that no pool quality information is missing for houses that have pools. This checks out as there are 2930 rows, 2917 missing values in the pool quality variable, and 13 recorded pool quality records in the bar chart. We changed the missing values for pool quality from `NA` to `No Pool` to give it an appropriate level. 
 
 ```{r}
 index <- which(is.na(df$pool.qc))
 df[index, 'pool.qc'] <- 'No Pool'
 ```
 
+
+
+
+
+
+
+
+
+
+
 ```{r}
-ggplot(data=df, aes(x=gr.liv.area, y=saleprice)) + geom_point(alpha=.25, color="#00b9be")
+#ggplot(data=df, aes(x=gr.liv.area, y=saleprice)) + geom_point(alpha=.25, color="#00b9be")
 ```
-
-There appear to be 3 "partial sales" outliers that we will drop (high square footage but low sale price), as apparent from the above graph.
-
-```{r}
-# drop the outlier "partial sales"
-df <- df[(df$gr.liv.area < 4500),]
-```
-
-
-
