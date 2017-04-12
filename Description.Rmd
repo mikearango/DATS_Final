@@ -24,7 +24,7 @@ library(lubridate)
 ```
 
 ```{r df summary, message = FALSE}
-df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE) #na.strings = "EMPTY"
+df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = TRUE) #na.strings = "EMPTY"
 glimpse(df)
 ```
 
@@ -102,14 +102,14 @@ df[index, 'pool.qc'] <- 'No Pool'
 ```
 
 ```{r}
-ggplot(data=df, aes(x=Gr.Liv.Area, y=SalePrice)) + geom_point(alpha=.25, color="#00b9be")
+ggplot(data=df, aes(x=gr.liv.area, y=saleprice)) + geom_point(alpha=.25, color="#00b9be")
 ```
 
 There appear to be 3 "partial sales" outliers that we will drop (high square footage but low sale price), as apparent from the above graph.
 
 ```{r}
 # drop the outlier "partial sales"
-df <- df[(df$Gr.Liv.Area < 4500),]
+df <- df[(df$gr.liv.area < 4500),]
 ```
 
 
