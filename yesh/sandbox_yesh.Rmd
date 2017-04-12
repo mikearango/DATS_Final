@@ -1,0 +1,39 @@
+---
+title: "sandbox_yesh"
+author: "Yeshwant Chillakuru"
+date: "4/12/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r r1}
+
+df <- read.xls('../data/AmesHousing.xls', stringsAsFactors = TRUE)
+head(df)
+
+```
+
+```{r}
+ggplot(data=df, aes(x=Gr.Liv.Area, y=SalePrice)) + geom_point(alpha=.2)
+```
+
+# Cleaning
+  1. Drop Variables that are useless
+  2. drop 3 outliers (see above scatter plot) --> partial sales
+    
+# Questions
+  * Can we do unsupervised learning with categorical variables? How does PCA work with categorical variables (MS.Subclass, MS.Zoning, Street, etc.)
+  * Predict the price of homes
+  * Predict what neighborhood in town the home is based on sale price and other factors (KNN)
+
+  
+  
+  
+  
+  
+  
+
