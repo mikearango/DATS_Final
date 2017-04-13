@@ -16,6 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Initializing Packages and Importing Data
+
 ```{r init, message = FALSE}
 library(gdata)
 library(tidyverse)
@@ -34,7 +35,7 @@ We will adopt a standard variable naming convention where all variables are lowe
 names(df) <- tolower(names(df))
 # drop the order vairiable
 df <- df %>% 
-  select(everything(), -order)
+  dplyr::select(everything(), -order)
 names(df)
 ```
 
@@ -97,17 +98,73 @@ summarise(df,
           n_pid = n_distinct(pid))
 ```
 
-Unfortunately, every parcel ID only appears once in the dataset. 
+Unfortunately, every parcel ID only appears once in the dataset. Since the parcel ID doesn't add meaningful information in predicting price, we are going to drop it. It may be interesting to use for mapping purposes, but that is outside the scope of this project. 
+
+```{r drop pid}
+df <- df %>% 
+  dplyr::select(everything(), -pid)
+```
 
 ## Dwelling Type
 
-The `ms.subclass` variable specifies the type of dwelling involved in the sale. The variables as coded as an integer and has a key that can be found on the documentation. There are `r n_distinct(df$ms.subclass)` types of dwellings included. Numbers in the 20 t0 85 range represent different traditional style homes and others represent duplexes or other split homes. 
+The `ms.subclass` variable specifies the type of dwelling involved in the sale. The variables as coded as an integer and has a key that can be found on the documentation. There are `r n_distinct(df$ms.subclass)` types of dwellings included. Numbers in the 20 to 85 range represent different traditional style homes and others represent duplexes or other split homes. 
 
 ```{r ms.subclass}
 table(df$ms.subclass)
 ```
 
 The table shows that most residential sales during this time were one or two-story houses built after 1946. 
+
+## Zoning Classification
+
+There are 8 different zoning classifications and they range from agricultural to residential. 
+
+```{r ms.zoning}
+table(df$ms.zoning)
+# shorten to A
+index <- which(df$ms.zoning == "A (agr)")
+df[index, 'ms.zoning'] <- "A"
+# shorten to C
+index <- which(df$ms.zoning == "C (all)")
+df[index, 'ms.zoning'] <- "C"
+# Shorten to I
+index <- which(df$ms.zoning == "I (all)")
+df[index, 'ms.zoning'] <- "I"
+# results
+table(df$ms.zoning) 
+```
+
+Even though there are a few properties on here that are listed as agricultural, commercial, or industrial, we include them since they were residential sales. Just because a property was zoned commercially at the time it was built does not necessarily imply that the zoning laws or neighborhood have not changed.
+
+```{r zoning median sale}
+df %>% 
+  group_by(ms.zoning) %>% 
+  summarise(n = n(),
+            median_year_built = median(year.built),
+            median_sale_price = median(saleprice)) %>% 
+  arrange(desc(median_sale_price))
+```
+
+The table above shows the median sale price for each zoning classification included in the dataset. It makes sense that residential properties are listed for more money than their non-residentially zoned counterparts. We hypothesize that these non-residentially zoned houses were built longer ago than the residential ones. This leaves two possibilities: 1) the house was originally zoned residentially when built and city zoning reform has taken place since then or 2) the house was originally an office space, company, etc. that was converted into a house after the fact. The graph below shows each individual sale, the sale price, the year the dwelling was built, and whether or not it was zoned as residential. 
+
+```{r graph zoning scale}
+library(graphics)
+plot(df$year.built, df$saleprice, pch = 1, main = "Scatter Plot of Year Built and Sale Price", xlab = "Year Built", ylab = "Sale Price")
+index <- which(df$ms.zoning %in% c("A", "I", "C"))
+points(df$year.built[index], df$saleprice[index], pch = 16, col = "red")
+legend("topleft", pch = c(1, 16), col = c('black', 'red'), legend = c("Residential", "Non-Residential"), title = "Zoning Classification")
+myticks <- axTicks(2)
+axis(2, at = myticks, labels = formatC(myticks, format = 'd'))
+```
+
+
+
+
+
+
+
+
+
 
 ## Pool Quality 
 Pool quality is an ordinal description of the condition of the pool. It seems there are so many NA's because the houses are in Ames, Iowa and you cannot rate pool quality if a house does not have a pool. Since we have the actual dimensions of the pools for all houses, we can double-check to make sure if this assumption is correct. 
@@ -138,27 +195,6 @@ Check to see if any houses have been resold
 any(table(df$pid)>1)
 ```
 Any houses resold: `r any(table(df$pid)>1)`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
