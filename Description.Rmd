@@ -355,8 +355,92 @@ df %>%
 
 ## Building Type
 
+```{r building type}
+plotCategorical('bldg.type', df)
+df %>% 
+  group_by(bldg.type) %>% 
+  summarise(n = n(), 
+            median_saleprice = median(saleprice))
+```
 
+## House Style 
 
+```{r house style}
+plotCategorical('house.style', df)
+df %>% 
+  group_by(house.style) %>% 
+  summarise(n = n(), 
+            median_saleprice = median(saleprice))
+```
+
+## Overall Quality
+
+```{r overall quality}
+tbl <- df %>% 
+  group_by(overall.qual) %>% 
+  summarise(n = n(), 
+            median_saleprice = median(saleprice))
+ggplot(tbl, aes(x = factor(overall.qual), y = median_saleprice, fill = factor(overall.qual))) + 
+  geom_bar(stat = 'identity') + 
+  scale_y_continuous(labels = dollar) + 
+  theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
+  labs(x = 'Overall House Quality', y = 'Median Sale Price')
+```
+
+The relationship between median sale price and overall house quality is parabolic. We may need to linearly transform this variable. 
+
+```{r overall qual2}
+ggplot(df, aes(x = factor(overall.qual), y = saleprice)) + 
+  geom_boxplot(aes(fill = factor(overall.qual))) +
+  theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
+  scale_y_continuous(labels = dollar)
+```
+
+It also seems that as overall quality increases, so too does variance. 
+
+## Overall Condition 
+
+```{r overall condition}
+ggplot(df, aes(x = factor(overall.cond), y = saleprice)) + 
+  geom_boxplot(aes(fill = factor(overall.cond))) +
+  theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
+  scale_y_continuous(labels = dollar)
+```
+
+```{r overall condition2}
+tbl <- df %>% 
+  group_by(overall.cond) %>% 
+  summarise(n = n(), 
+            median_saleprice = median(saleprice))
+ggplot(tbl, aes(x = factor(overall.cond), y = median_saleprice, fill = factor(overall.cond))) + 
+  geom_bar(stat = 'identity') + 
+  scale_y_continuous(labels = dollar) + 
+  theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
+  labs(x = 'Overall House Condition', y = 'Median Sale Price')
+```
+
+## Year Built
+
+We find it more insightful to calculate the age of the house at the time it was sold as this is a slightly better proxy of house age. 
+
+```{r year built}
+df$house.age <- df$yr.sold - df$year.built
+summary(df$house.age)
+index <- which(df$house.age < 0)
+df[index, ]
+```
+
+Figure out what to do about this house that was sold the year before it was built and 2 years before it was remodeled further. 
+
+## Year Remodeled
+```{r year remodeled}
+df$yrs.since.remod <- df$yr.sold - df$year.remod.add
+summary(df$yrs.since.remod)
+index <- which(df$yrs.since.remod < 0)
+df[index, ]
+```
+
+All new houses that were remodeled the year after they were built and sold. 
 
 
 
