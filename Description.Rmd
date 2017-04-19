@@ -469,14 +469,101 @@ df[index, 'pool.qc'] <- 'No Pool'
 ```
 
 
-
-
-
 Check to see if any houses have been resold
 ```{r include=FALSE}
 any(table(df$pid)>1)
 ```
 Any houses resold: `r any(table(df$pid)>1)`
+
+
+
+
+
+## Roof, Basement, Exterior, and heating/air conditioning 
+ --- Yesh's Data Cleaning
+###Cleaning `roof.style` to `central.air`:
+```{r yeshsection}
+
+start <- which(colnames(df) == 'roof.style') 
+end <- which(colnames(df) == 'central.air') 
+
+colnames_yesh <- colnames(df[, start:end])
+colnames_yesh
+```
+
+
+Check for any missing values
+```{r}
+print(paste('Total NAs: ',sum(is.na(df[start:end]))))
+colnamesWithNA_yesh <- NULL
+
+for(i in colnames_yesh){
+  print(paste0(i,': ',sum(is.na(df[, i]))))
+  if(sum(is.na(df[, i])) > 0){
+      colnamesWithNA_yesh <- append(colnamesWithNA_yesh, i)
+  }
+}
+
+colnamesWithNA_yesh
+```
+
+
+
+### Converting NA to No Basement for `bsmt` variables
+
+It is important to note that "NA in `bsmt.qual`, `bsmt.cond`, `bsmt.exposure`, `bsmtfin.type1`, and  `bsmtfin.type2`, actually means "No Basement." As seen above, each of these have 78 NAs (shows consistency), and if all 5 variables above == NA, they are converted to "No Basement."
+```{r convertNAs}
+
+bsmtNAfunction <- function(x){
+  if(is.na(x[10]) & is.na(x[11]) & is.na(x[12]) & is.na(x[13]) & is.na(x[15]) ){
+    TRUE
+  } else {
+    FALSE
+  }
+}
+
+noBasmentLogical <- apply(df[,start:end], 1, bsmtNAfunction)
+
+table(noBasmentLogical) # 78 observations have no basement for all 5 categories.
+
+# replace NA's with "No Basement"
+
+df[, c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2')][is.na(df[, c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2')])] <- "No Basement"
+
+```
+
+### Drop NA's in other variables 
+```{r}
+
+
+
+colnamesWithNA_yesh <- colnamesWithNA_yesh[! (colnamesWithNA_yesh %in% c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2'))]
+
+obsDropped <- dim(df)[1] - dim(df[complete.cases(df[,colnamesWithNA_yesh]),])[1]
+df <- df[complete.cases(df[,colnamesWithNA_yesh]),]
+
+```
+#### `r obsDropped` Observations Dropped because of missing values in: `r colnamesWithNA_yesh` 
+
+### Plot Categorical for Roof, Basement, Exterior, and heating/ac
+```{r, echo=FALSE}
+plotCategorical('roof.style', df)
+plotCategorical('roof.matl', df)
+plotCategorical('exterior.1st', df)
+plotCategorical('exterior.2nd', df)
+plotCategorical('exter.qual', df)
+plotCategorical('exter.cond', df)
+plotCategorical('bsmt.qual', df)
+plotCategorical('bsmt.cond', df)
+plotCategorical('bsmt.exposure', df)
+plotCategorical('bsmtfin.type.1', df)
+plotCategorical('bsmtfin.type.2', df)
+plotCategorical('heating', df)
+plotCategorical('heating.qc', df)
+plotCategorical('central.air', df)
+```
+
+
 
 
 
