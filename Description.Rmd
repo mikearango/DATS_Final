@@ -547,3 +547,86 @@ plotCategorical('heating', df)
 plotCategorical('heating.qc', df)
 plotCategorical('central.air', df)
 ```
+
+ --- Paul's Data Cleaning
+## Cleaning paved.drive to saleprice:
+```{r paulsection}
+
+start <- which(colnames(df) == 'paved.drive') 
+end <- which(colnames(df) == 'saleprice') 
+
+colnames_paul <- colnames(df[, start:end])
+colnames_paul
+```
+
+Check for any missing values
+```{r}
+print(paste('Total NAs: ',sum(is.na(df[start:end]))))
+colnamesWithNA_paul <- NULL
+
+for(i in colnames_paul){
+  print(paste0(i,': ',sum(is.na(df[, i]))))
+  if(sum(is.na(df[, i])) > 0){
+      colnamesWithNA_paul <- append(colnamesWithNA_paul, i)
+  }
+}
+
+colnamesWithNA_paul
+```
+
+## Converting fence value of NA to "No Fence"
+
+It's clear that the fence value of NA indicates a condition where no fence exists
+
+```{r}
+plotCategorical('fence', df)
+index <- which(is.na(df$fence))
+df[index, 'fence'] <- 'No Fence'
+```
+
+## Converting misc.feature value of NA to "No Feature"
+
+Misc Feature and Misc Val are connected fields.  It looks like misc.val should be none-zero when a non-NA value exists in Misc,feature and should be zero when misc.feature is NA.   
+
+The following code will 
+  1) return all rows (if there are any) where the misc.val is greater than 0 and the misc.feature is missing and
+  2) return all rows (if there are any) where the misc.val is equal to 0 and the misc.feature is coded.
+
+```{r missing misc.feature}
+df[(df$misc.val > 0) & is.na(df$misc.feature), c('misc.feature','misc.val')]
+df[(df$misc.val == 0) & ! (is.na(df$misc.feature)), c('misc.feature','misc.val')]
+head(df[(df$misc.val > 0), c('misc.feature','misc.val')])
+```
+
+It appears that misc.value is > 0 for houses that have misc,features and zero for houses that have no misc.feature. 
+
+It's clear that the misc.feature value of NA indicates a condition where no misc feature exists.
+
+```{r}
+index <- which(is.na(df$misc.feature))
+df[index, 'misc.feature'] <- 'No Feature'
+plotCategorical('misc.feature', df)
+```
+Each of the misc.feature factors have an imputed value assigned by the evaluator which may be an attempt to indicate a contribution to the ultimate sale price.
+```{r}
+ggplot(df, aes(x = factor(misc.feature), y = misc.val)) + geom_boxplot(aes(fill = factor(misc.feature))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+```
+
+## Other categorical variables
+```{r}
+plotCategorical('sale.type', df)
+ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+```
+```{r}
+plotCategorical('sale.condition', df)
+ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.condition))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+```
+
+## Creating a Saledate 
+
+A sale date as a combination of the month and year might help with the analysis of effect over time.
+
+```{r}
+df$sale.date <- as.Date(paste(df$mo.sold,c("01"),df$yr.sold, sep = "/"), "%m/%d/%Y")
+ggplot(df, aes(x = factor(sale.date), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.date))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+```
