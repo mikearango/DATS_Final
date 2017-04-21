@@ -440,12 +440,7 @@ index <- which(df$yrs.since.remod < 0)
 df[index, ]
 ```
 
-All new houses that were remodeled the year after they were built and sold. 
-
-
-
-
-
+These are all new houses that were remodeled the year after they were built and sold. 
 
 
 ## Pool Quality 
@@ -573,6 +568,11 @@ index <- which(df$electrical == "Mix")
 df[index, 'electrical'] <- "M"
 #New category names
 table(df$electrical)
+
+
+# Figure out what is going on here *******
+index <- which(df$electrical == "")
+df[index, ]
 ```
 
 ## Living Area
@@ -599,7 +599,7 @@ tail(subset(sort.area, select = c(x, x1st.flr.sf, gr.liv.area)))
 
 ## Second Floor Square Feet
 
-Continuous variable, ranging from 0 to 1862, median = 0, mean = 333.8, indicating that most homes sold in Ames, Iowa do not have second floors. I made a new variable called has.2nd.floor, which is a dummy variable where 0 = "no second floor" and 1 = "has second floor". 42.67% of homes sold in Ames have 2nd floors.
+Continuous variable, ranging from 0 to 1862, median = 0, mean = 333.8, indicating that at least 50% of homes sold in Ames, Iowa do not have second floors. I made a new variable called has.2nd.floor, which is a dummy variable where 0 = "no second floor" and 1 = "has second floor". 42.67% of homes sold in Ames have 2nd floors.
 
 Made a table containing neighborhoods and the ratio of houses sold that had a second floor in each neighbordhood
 
@@ -625,7 +625,7 @@ Continuous variable, ranging from 0 to 1064, median = 0, mean = 4.685, no missin
 
 98.63%(2885/2925) of homes have 0 square feet of low quality finish.
 
-OldTown(10), IDOTRR(7), and SWISU(6) have the most homes with low quality finish, though there are not that many(40) total. 
+OldTown (10), IDOTRR (7), and SWISU (6) have the most homes with low quality finish, though there are not that many (40) total. 
 
 ```{r}
 summary(df$low.qual.fin.sf)
@@ -655,7 +655,7 @@ Four discrete variables relating to bathroom numbers:
   - full.bath - number of full baths above ground level
   - half.bath - number of half baths above ground level
   
-The majority of homes do not have any half baths or basement full baths. Both bsmt.full.bath and bsmt.half.bath have two missing values. Both are the same two variables, homes 1342 and 1498. 1342 is missing 10 predictors, all related to the basement, giving no indication of whether or not they have a basement. 1498 has no basement as shown by other predictors, so I have given both missing variables a value of 0.  
+The majority of homes do not have any half baths or basement full baths. Both bsmt.full.bath and bsmt.half.bath have two missing values. Both missing values for the 2 variables correspond to row indices of 1342 and 1498. Observation 1342 is missing 10 predictors, all related to the basement, giving no indication of whether or not they have a basement. Observation 1498 has no basement as shown by other predictors, so I have given both missing variables a value of 0.  
 
 ```{r}
 bath.missing <- df %>% filter(is.na(bsmt.half.bath) | is.na(bsmt.full.bath))
@@ -670,7 +670,7 @@ table(df$full.bath)
 table(df$half.bath)
 ```
 
-Decided to combine all bathroom variables (above ground and basement full baths and half baths) into one total bathroom variable, discrete, if we want to simplify our analysis regarding bathrooms.
+Decided to combine all bathroom variables (above ground and basement full baths and half baths) into one total bathroom variable, discrete, if we want to simplify our analysis regarding bathrooms. Note: we need to be wary of including all of these variables into our model as total.bath is a linear combination of other variables. It might be worth running a very simple housing regression model with this total.bath variable. 
 
 ```{r}
 mutate(df, total.bath = bsmt.full.bath + full.bath + (.5 * bsmt.half.bath) + (.5 * half.bath))
@@ -1012,3 +1012,6 @@ A sale date as a combination of the month and year might help with the analysis 
 df$sale.date <- as.Date(paste(df$mo.sold,c("01"),df$yr.sold, sep = "/"), "%m/%d/%Y")
 ggplot(df, aes(x = factor(sale.date), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.date))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
+
+
+
