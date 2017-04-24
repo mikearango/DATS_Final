@@ -34,7 +34,7 @@ We will adopt a standard variable naming convention where all variables are lowe
 
 ```{r fix col names}
 names(df) <- tolower(names(df))
-# drop the order vairiable
+# drop the order variable
 df <- df %>% 
   dplyr::select(everything(), -order)
 names(df)
@@ -442,7 +442,6 @@ df[index, ]
 
 These are all new houses that were remodeled the year after they were built and sold. 
 
-
 ## Pool Quality 
 Pool quality is an ordinal description of the condition of the pool. It seems there are so many NA's because the houses are in Ames, Iowa and you cannot rate pool quality if a house does not have a pool. Since we have the actual dimensions of the pools for all houses, we can double-check to make sure if this assumption is correct. 
 
@@ -462,9 +461,6 @@ It appears that no pool quality information is missing for houses that have pool
 index <- which(is.na(df$pool.qc))
 df[index, 'pool.qc'] <- 'No Pool'
 ```
-
-
-
 
 
 ## Roof, Basement, Exterior, and heating/air conditioning 
@@ -572,7 +568,7 @@ table(df$electrical)
 
 # Figure out what is going on here *******
 index <- which(df$electrical == "")
-df[index, ]
+df[index, 'electrical'] <- "SB"
 ```
 
 ## Living Area
@@ -606,7 +602,6 @@ Made a table containing neighborhoods and the ratio of houses sold that had a se
 ```{r} 
 summary(df$x2nd.flr.sf)
 df$has.2nd.floor <- ifelse(df$x2nd.flr.sf > 0, 1, 0)
-df$has.2nd.floor <- as.factor(df$has.2nd.floor)
 summary(df$has.2nd.floor)
 
 #Percentage of houses that have 2 floors
@@ -738,7 +733,6 @@ Rearranged the factors of functional to range from Salvage Only to Typical rathe
 
 ```{r}
 table(df$functional)
-df$functional <- factor(df$functional, levels = c("Sal", "Sev", "Maj2", "Maj1", "Mod", "Min2", "Min1", "Typ"))
 ```
 
 ## Fireplaces
@@ -830,7 +824,7 @@ df <- df[-index, ]
 
 ```{r}
 #Change garage year to integer for filtering
-df$garage.yr.blt <- as.numeric(df$garage.yr.blt)
+df$garage.yr.blt <- as.integer(df$garage.yr.blt)
 #Get all garage with a build year later than 2010
 future.garage <- df %>% filter(garage.yr.blt > 2010)
 future.garage
@@ -986,6 +980,7 @@ ggplot(df, aes(x = factor(misc.feature), y = misc.val)) + geom_boxplot(aes(fill 
 plotCategorical('sale.type', df)
 ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
+
 ```{r}
 plotCategorical('sale.condition', df)
 ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.condition))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
@@ -1000,5 +995,9 @@ df$sale.date <- as.Date(paste(df$mo.sold,c("01"),df$yr.sold, sep = "/"), "%m/%d/
 ggplot(df, aes(x = factor(sale.date), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.date))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
 
+# Write cleaned data to csv
 
+```{r}
+
+```
 
