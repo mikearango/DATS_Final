@@ -593,8 +593,8 @@ Ordered the df frame by above ground area, checked the head and tail to compare 
 ```{r}
 summary(df$x1st.flr.sf)
 sort.area <- df[order(df$gr.liv.area),]
-head(subset(sort.area, select = c(x1st.flr.sf, gr.liv.area)))
-tail(subset(sort.area, select = c(x1st.flr.sf, gr.liv.area)))
+head(subset(sort.area, select = c(x, x1st.flr.sf, gr.liv.area)))
+tail(subset(sort.area, select = c(x, x1st.flr.sf, gr.liv.area)))
 ```
 
 ## Second Floor Square Feet
@@ -691,11 +691,11 @@ table(df$bedroom.abvgr)
 bedless <- df %>% filter(bedroom.abvgr == 0) 
 bedless
 #Checking how many rooms are in each sale with 0 bedrooms
-bedless1 <- subset(bedless, select = c(totrms.abvgrd))
+bedless1 <- subset(bedless, select = c(x, totrms.abvgrd))
 bedless1
 
 #Comparing the basement area and above ground area of the homes with no above ground bedrooms
-area.compare <- subset(bedless, select = c(total.bsmt.sf, gr.liv.area))
+area.compare <- subset(bedless, select = c(x, total.bsmt.sf, gr.liv.area))
 area.compare
 
 test_model <- lm(totrms.abvgrd ~ bedroom.abvgr, data = df)
@@ -819,13 +819,12 @@ table(as.factor(df$garage.type))
 summary(df$garage.yr.blt)
 ```
 
-As can be seen, garage year is missing 159 values and the maximum value is 2207, which is obviously an error as that year has yet to occur, unless of course they meant 2207 B.C. I filtered the data set to test for homes built later than 2010, which is the tail date of the data set. Only one observation has this error. As the home was built in 2006 and remodeled in 2007, we can assume that the garage was built in 2007 and an imput error occured. 
+As can be seen, garage year is missing 159 values and the maximum value is 2207, which is obviously an error as that year has yet to occur, unless of course they meant 2207 B.C. I filtered the data set to test for homes built later than 2010, which is the tail date of the data set. Only one observation has this error. As the home was built in 2006 and remodeled in 2007, we can assume that the garage was built in 2007 and an imput error occured.
 
 ```{r}
+missing.garage.year <- df %>% filter(is.na(garage.yr.blt) & !is.na(garage.type))
+missing.garage.year
 # 1357 and 2237 have missing garage data
-index <- which(is.na(df$garage.yr.blt) & !is.na(df$garage.type))
-df <- df[-index, ]
-# drop these 2 observations***
 ```
 
 ```{r}
@@ -891,6 +890,14 @@ index.garage.cond <- which(is.na(df$garage.cond))
 df[index.garage.cond, 'garage.cond'] <- 'None'
 ```
 
+## Removing Data
+
+Observation x=2237 is missing all garage data except for garage.type, indicting that there is a garage but no data on it. I have decided to remove it.
+
+```{r}
+df <- df %>% filter(x != 2237)
+```
+
 ## Exploratory Data Analysis
 
 ```{r garage quality vs. garage condition}
@@ -907,7 +914,9 @@ library(graphics)
 
 df1 <- df %>% mutate(total.sf = total.bsmt.sf + x1st.flr.sf + x2nd.flr.sf) %>% filter(!is.na(total.sf)) %>% filter(saleprice < 650000) %>% filter(total.sf < 7500)
 
-df1$total.flr <- ifelse(df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf == 0, 1,
+df1$total
+
+.flr <- ifelse(df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf == 0, 1,
                 ifelse((df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf > 0) |
                          (df1$total.bsmt.sf > 0 & df1$x2nd.flr.sf == 0), 2, 3))
 
@@ -915,6 +924,10 @@ df1$total.flr <- ifelse(df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf == 0, 1,
 ggplot(df1, aes(x = total.sf, y = saleprice, color = as.factor(total.flr))) + geom_point()
 ```
 
+```{r}
+tbl1 <- df %>% 
+ggplot(df, aes(x = ))
+```
 
 
  --- Paul's Data Cleaning
@@ -986,9 +999,11 @@ ggplot(df, aes(x = factor(misc.feature), y = misc.val)) + geom_boxplot(aes(fill 
 plotCategorical('sale.type', df)
 ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
+
+
 ```{r}
 plotCategorical('sale.condition', df)
-ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.condition))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.condition))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + scale_y_continuous(labels = dollar)
 ```
 
 ## Creating a Saledate 
