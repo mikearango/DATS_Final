@@ -599,28 +599,30 @@ plotCategorical('central.air', df)
 ```
 
 
-Because `r round(2587/(2587+23+9+7+4),4) * 100`% of `roof.matl` (roof material) is `CompShg` with the remainign spread across 7 categories, we transformed the data to Comp.Shg or not.
-```{r}
-
+Because `r round(2587/(2587+23+9+7+4),4) * 100`% of `roof.matl` (roof material) is `CompShg` with the remaining spread across 7 categories, we transformed the data to Comp.Shg or not.
+```{r change roof matl}
+# Change roof.matl to CompShg and Other
 df$roof.matl <- ifelse(df$roof.matl == 'CompShg', 'CompShg', 'Other')
-
 ```
 
 Due to similar reasoning as `roof.matl`, `heating` is transformed to GasA, GasW, and other.
 
-```{r}
-
-df$heating <- ifelse(df$heating == 'GasA' | df$heating =='GasW', df$heating, 'Other')
-
+```{r combine lvls of heating}
+# check median sale price by heating type
+df %>% group_by(heating) %>% summarise(median(saleprice))
+# Combine Hot Water sources
+index <- which(df$heating == "GasW" | df$heating == "OthW")
+df[index, 'heating'] <- "HotW"
+# make all else other
+index <- which(df$heating != "GasA" & df$heating != "HotW")
+df[index, 'heating'] <- "Other"
 ```
-
-
 
 ## Electrical
 
 The electrical variable identifies the electrical system in the sold home. 2677 homes (91.52%) use Standard Circuit Breakers & Romex. Nominal Variable.
 
-I decided to change the names of the electrical categories to shorter abbreviations.
+We decided to change the names of the electrical categories to shorter abbreviations.
 
 ```{r}
 table(df$electrical)
