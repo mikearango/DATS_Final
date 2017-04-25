@@ -34,7 +34,7 @@ We will adopt a standard variable naming convention where all variables are lowe
 
 ```{r fix col names}
 names(df) <- tolower(names(df))
-# drop the order vairiable
+# drop the order variable
 df <- df %>% 
   dplyr::select(everything(), -order)
 names(df)
@@ -43,6 +43,7 @@ names(df)
 We decided to drop the order variable as it is just a duplicate row index and corresponds to the observation number. 
 
 ## Description of Dataset
+
 The dataset we chose for our project contains information from the Ames Assessor’s Office on residential property sales that occurred in Ames, Iowa from 2006 to 2010.[^1] Thus, the unit of observation in the dataset is a single property sale in Ames, Iowa in a given year. The dataset contains `r dim(df)[1]` observations and `r dim(df)[2]` variables. 
 
 Of the `r dim(df)[2]` variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are continuous. The variables included are basic characteristics that anyone wanting to buy a house would be interested in. For the most part, the different variables may be split up into specific groups. In general, the 20 continuous variables relate measurements of area dimensions for each observation. These include, among others, the sizes of lots, rooms, porches, and garages. The 14 discrete variables mostly have to do with the number of bedrooms, bathrooms, kitchens, etc. that a given property has. There are several geographic categorical variables that start profiling properties at the individual Parcel ID level and end at the neighborhood level. The rest of the nominal variables identify characteristics of the property and dwelling type/structure. Most of the ordinal variables are rankings of the quality/condition of rooms and lot characteristics. For more information on the variables in the dataset, consult the `DataDescription.txt` file in the data directory. 
@@ -108,7 +109,7 @@ df <- df %>%
 
 ## Dwelling Type
 
-The `ms.subclass` variable specifies the type of dwelling involved in the sale. The variables as coded as an integer and has a key that can be found on the documentation. There are `r n_distinct(df$ms.subclass)` types of dwellings included. Numbers in the 20 to 85 range represent different traditional style homes and others represent duplexes or other split homes. 
+The `ms.subclass` variable specifies the type of dwelling involved in the sale. The variable is coded as an integer and has a key that can be found in the documentation. There are `r n_distinct(df$ms.subclass)` types of dwellings included. Numbers in the 20 to 85 range represent different traditional style homes and others represent duplexes or other split homes. 
 
 ```{r ms.subclass}
 table(df$ms.subclass)
@@ -176,7 +177,7 @@ head(df[index,])
 
 Let's see if some lot configurations are missing more lot frontage than others or whether some neighborhoods are missing a bunch of lot frontage data.
 
-```{r}
+```{r nbhd}
 table(df[index, 'neighborhood'])
 # Check to see if any neighborhood data is missing first
 any(is.na(df$neighborhood))
@@ -224,7 +225,7 @@ any(is.na(df$lot.frontage))
 Now that all values are imputed, let's check the distribution. 
 
 ```{r frontage scatter}
-ggplot(df, aes(x = log(lot.frontage), y = log(saleprice))) + geom_point() + geom_smooth(method = "lm")
+ggplot(df, aes(x = log(lot.frontage), y = saleprice)) + geom_point() + geom_smooth(method = "lm")
 df$ln.lot.frontage <- log(df$lot.frontage)
 ```
 
@@ -257,16 +258,28 @@ df %>%
 
 ## Alley
 
-There are `r sum(is.na(df$alley))` missing values, but that's because the documentation states `NA` means `No Alley`.
+There are `r sum(is.na(df$alley))` missing values in the alley variable, but that's because the documentation states `NA` means `No Alley`.
+
 ```{r alley}
 index <- which(is.na(df$alley))
 df[index, 'alley'] <- 'No Alley'
 ```
 
+Coding the NAs to No Alley, fixes all these missing values. 
+
 ## Lot Shape
 
 ```{r lot shape}
 plotCategorical('lot.shape', df)
+# median sale price by lot shape
+df %>% 
+  group_by(lot.shape) %>% 
+  summarise(n = n(), 
+            median_saleprice = median(saleprice))
+# Combine IR2 and IR3 into one level 
+index <- which(df$lot.shape == "IR2" | df$lot.shape == "IR3")
+df[index, 'lot.shape'] <- "Mod+ IR"
+# New median sale price by lot shape
 df %>% 
   group_by(lot.shape) %>% 
   summarise(n = n(), 
@@ -291,14 +304,23 @@ df %>%
   group_by(utilities) %>% 
   summarise(n = n(), 
             median_saleprice = median(saleprice))
+# find the 3 non-allpub utility houses
+index <- which(df$utilities != "AllPub")
+df[index, ]
+# We are going to drop these 3 houses
+df <- df[-index, ]
+# Now we drop the utitlity variable
+df <- df %>% 
+  dplyr::select(everything(), -utilities)
 ```
 
-We might consider dropping this so we do not overfit when we build our model. 
+We dropped the 3 observations that did not have public utilities. Then, we dropped the utility variable. 
 
 ## Lot Configuration
 
 ```{r lot config}
 plotCategorical("lot.config", df)
+# look at median sale price by lot configuration
 df %>% 
   group_by(lot.config) %>% 
   summarise(n = n(), 
@@ -314,20 +336,33 @@ df %>%
   group_by(land.slope) %>% 
   summarise(n = n(), 
             median_saleprice = median(saleprice))
+# combine moderate and severe land slope into 1 level 
+index <- which(df$land.slope != "Gtl")
+df[index, "land.slope"] <- "Not Gtl" 
+# new plot
+plotCategorical("land.slope", df)
+# new table
+df %>% 
+  group_by(land.slope) %>% 
+  summarise(n = n(), 
+            median_saleprice = median(saleprice))
 ```
 
 ## Neighborhood
 
 ```{r neighborhood}
+# boxplot of neighborhood and saleprice
 ggplot(df, aes(x = neighborhood, y = saleprice)) + 
-  geom_boxplot(aes(fill = neighborhood)) +
+  geom_boxplot(fill = "#81AC9B") +
   theme(axis.text.x = element_text(angle = 90, size = 8), legend.position = "none") + 
-  scale_y_continuous(labels = dollar)
+  scale_y_continuous(labels = dollar) 
+# creat median sale price by neighborhood
 tbl <- df %>% 
   group_by(neighborhood) %>% 
   summarise(median_saleprice = median(saleprice))
-ggplot(tbl, aes(x = neighborhood, y = median_saleprice, fill = neighborhood)) + 
-  geom_bar(stat = 'identity') + 
+# plot tbl
+ggplot(tbl, aes(x = neighborhood, y = median_saleprice)) + 
+  geom_bar(stat = 'identity', fill = "#81AC9B") + 
   scale_y_continuous(labels = dollar) + 
   theme(axis.text.x = element_text(angle = 90, size = 8), legend.position = "none") + 
   labs(x = 'Neighborhood', y = 'Median Sale Price')
@@ -337,6 +372,7 @@ ggplot(tbl, aes(x = neighborhood, y = median_saleprice, fill = neighborhood)) +
 
 ```{r condition one}
 plotCategorical('condition.1', df)
+# median sale price by condition 1
 df %>% 
   group_by(condition.1) %>% 
   summarise(n = n(), 
@@ -351,6 +387,8 @@ df %>%
   group_by(condition.2) %>% 
   summarise(n = n(), 
             median_saleprice = median(saleprice))
+# No case where first condition is norm and second isn't
+any(df$condition.1 == "Norm" & df$condition.2 != "Norm")
 ```
 
 ## Building Type
@@ -373,15 +411,23 @@ df %>%
             median_saleprice = median(saleprice))
 ```
 
+We decided to drop the `ms.subclass` variable as it is a combination of `bldg.type`, `house.style`, and `year.built`. 
+
+```{r drop ms.subclass}
+df <- df %>% dplyr::select(everything(), -ms.subclass)
+```
+
 ## Overall Quality
 
 ```{r overall quality}
+# df to store median sale price of overall qual
 tbl <- df %>% 
   group_by(overall.qual) %>% 
   summarise(n = n(), 
             median_saleprice = median(saleprice))
-ggplot(tbl, aes(x = factor(overall.qual), y = median_saleprice, fill = factor(overall.qual))) + 
-  geom_bar(stat = 'identity') + 
+# 
+ggplot(tbl, aes(x = factor(overall.qual), y = median_saleprice)) + 
+  geom_bar(stat = 'identity', fill = "#81AC9B") + 
   scale_y_continuous(labels = dollar) + 
   theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
   labs(x = 'Overall House Quality', y = 'Median Sale Price')
@@ -391,9 +437,10 @@ The relationship between median sale price and overall house quality is paraboli
 
 ```{r overall qual2}
 ggplot(df, aes(x = factor(overall.qual), y = saleprice)) + 
-  geom_boxplot(aes(fill = factor(overall.qual))) +
+  geom_boxplot(fill = "#81AC9B") +
   theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
-  scale_y_continuous(labels = dollar)
+  scale_y_continuous(labels = dollar) + 
+  scale_x_discrete("Overall Quality")
 ```
 
 It also seems that as overall quality increases, so too does variance. 
@@ -402,18 +449,21 @@ It also seems that as overall quality increases, so too does variance.
 
 ```{r overall condition}
 ggplot(df, aes(x = factor(overall.cond), y = saleprice)) + 
-  geom_boxplot(aes(fill = factor(overall.cond))) +
+  geom_boxplot(fill = "#788BBD") +
   theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
-  scale_y_continuous(labels = dollar)
+  scale_y_continuous(labels = dollar) + 
+  scale_x_discrete("Overall Condition")
 ```
 
 ```{r overall condition2}
+# df to see median sale price for overall condition
 tbl <- df %>% 
   group_by(overall.cond) %>% 
   summarise(n = n(), 
             median_saleprice = median(saleprice))
-ggplot(tbl, aes(x = factor(overall.cond), y = median_saleprice, fill = factor(overall.cond))) + 
-  geom_bar(stat = 'identity') + 
+# plot house condition and median sale price
+ggplot(tbl, aes(x = factor(overall.cond), y = median_saleprice)) + 
+  geom_bar(stat = 'identity', fill = "#788BBD") + 
   scale_y_continuous(labels = dollar) + 
   theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
   labs(x = 'Overall House Condition', y = 'Median Sale Price')
@@ -433,6 +483,7 @@ df[index, ]
 Figure out what to do about this house that was sold the year before it was built and 2 years before it was remodeled further. 
 
 ## Year Remodeled
+
 ```{r year remodeled}
 df$yrs.since.remod <- df$yr.sold - df$year.remod.add
 summary(df$yrs.since.remod)
@@ -442,8 +493,8 @@ df[index, ]
 
 These are all new houses that were remodeled the year after they were built and sold. 
 
-
 ## Pool Quality 
+
 Pool quality is an ordinal description of the condition of the pool. It seems there are so many NA's because the houses are in Ames, Iowa and you cannot rate pool quality if a house does not have a pool. Since we have the actual dimensions of the pools for all houses, we can double-check to make sure if this assumption is correct. 
 
 ```{r plot pool.qc}
@@ -464,13 +515,11 @@ df[index, 'pool.qc'] <- 'No Pool'
 ```
 
 
-
-
-
 ## Roof, Basement, Exterior, and heating/air conditioning 
- --- Yesh's Data Cleaning
+
 ### Cleaning roof.style to central.air:
-```{r yeshsection}
+
+```{r yeshsections}
 start <- which(colnames(df) == 'roof.style') 
 end <- which(colnames(df) == 'central.air') 
 
@@ -479,7 +528,7 @@ colnames_yesh
 ```
 
 Check for any missing values:
-```{r}
+```{r check for missing values}
 print(paste('Total NAs: ', sum(is.na(df[start:end]))))
 colnamesWithNA_yesh <- NULL
 
@@ -526,7 +575,7 @@ df <- df[complete.cases(df[,colnamesWithNA_yesh]),]
 `r obsDropped` Observations Dropped because of missing values in: `r colnamesWithNA_yesh` 
 
 ### Plot Categorical for Roof, Basement, Exterior, and heating/ac
-```{r, echo=FALSE}
+```{r a ton of plots, echo = FALSE}
 plotCategorical('roof.style', df)
 plotCategorical('roof.matl', df)
 plotCategorical('exterior.1st', df)
@@ -572,7 +621,7 @@ table(df$electrical)
 
 # Figure out what is going on here *******
 index <- which(df$electrical == "")
-df[index, ]
+df[index, 'electrical'] <- "SB"
 ```
 
 ## Living Area
@@ -606,7 +655,6 @@ Made a table containing neighborhoods and the ratio of houses sold that had a se
 ```{r} 
 summary(df$x2nd.flr.sf)
 df$has.2nd.floor <- ifelse(df$x2nd.flr.sf > 0, 1, 0)
-df$has.2nd.floor <- as.factor(df$has.2nd.floor)
 summary(df$has.2nd.floor)
 
 #Percentage of houses that have 2 floors
@@ -738,7 +786,6 @@ Rearranged the factors of functional to range from Salvage Only to Typical rathe
 
 ```{r}
 table(df$functional)
-df$functional <- factor(df$functional, levels = c("Sal", "Sev", "Maj2", "Maj1", "Mod", "Min2", "Min1", "Typ"))
 ```
 
 ## Fireplaces
@@ -829,7 +876,7 @@ missing.garage.year
 
 ```{r}
 #Change garage year to integer for filtering
-df$garage.yr.blt <- as.numeric(df$garage.yr.blt)
+df$garage.yr.blt <- as.integer(df$garage.yr.blt)
 #Get all garage with a build year later than 2010
 future.garage <- df %>% filter(garage.yr.blt > 2010)
 future.garage
@@ -1000,7 +1047,6 @@ plotCategorical('sale.type', df)
 ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
 
-
 ```{r}
 plotCategorical('sale.condition', df)
 ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.condition))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + scale_y_continuous(labels = dollar)
@@ -1015,5 +1061,10 @@ df$sale.date <- as.Date(paste(df$mo.sold,c("01"),df$yr.sold, sep = "/"), "%m/%d/
 ggplot(df, aes(x = factor(sale.date), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.date))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
 
+# Write cleaned data to csv
 
+```{r write to csv}
+# write_csv(df, "cleaned_housing.csv")
+```
 
+I am waiting until all of our cleaning is done to uncomment this. 
