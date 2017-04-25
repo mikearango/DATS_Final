@@ -235,11 +235,17 @@ The relationship between sale price and lot frontage looks much more linear afte
 
 ```{r lot area}
 # scatter plot vs sale price
-ggplot(df, aes(x = lot.area, y = saleprice)) + geom_point() + geom_smooth(method = "lm")
+ggplot(df, aes(x = lot.area, y = saleprice)) + 
+  geom_point(alpha = 0.2) + 
+  geom_smooth(method = "lm") + 
+  scale_y_continuous(labels = dollar)
 # distribution of lot area
 summary(df$lot.area)
 # ln lot area
-ggplot(df, aes(x = log(lot.area), y = saleprice)) + geom_point() + geom_smooth(method = "lm")
+ggplot(df, aes(x = log(lot.area), y = saleprice)) + 
+  geom_point(alpha = 0.2) + 
+  geom_smooth(method = "lm") + 
+  scale_y_continuous(labels = dollar)
 # add variable
 df$ln.lot.area <- log(df$lot.area)
 ```
