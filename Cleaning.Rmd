@@ -598,6 +598,24 @@ plotCategorical('heating.qc', df)
 plotCategorical('central.air', df)
 ```
 
+
+Because `r round(2587/(2587+23+9+7+4),4) * 100`% of `roof.matl` (roof material) is `CompShg` with the remainign spread across 7 categories, we transformed the data to Comp.Shg or not.
+```{r}
+
+df$roof.matl <- ifelse(df$roof.matl == 'CompShg', 'CompShg', 'Other')
+
+```
+
+Due to similar reasoning as `roof.matl`, `heating` is transformed to GasA, GasW, and other.
+
+```{r}
+
+df$heating <- ifelse(df$heating == 'GasA' | df$heating =='GasW', df$heating, 'Other')
+
+```
+
+
+
 ## Electrical
 
 The electrical variable identifies the electrical system in the sold home. 2677 homes (91.52%) use Standard Circuit Breakers & Romex. Nominal Variable.
