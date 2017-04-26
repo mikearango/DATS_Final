@@ -26,6 +26,9 @@ library(scales)
 ```
 
 ```{r df summary, message = FALSE}
+#Included alternate version of the read.xls routine to handle the pointer to perl; will remove once we get to the bottom of the issue
+#
+#df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE, perl = "C:/Strawberry/perl/bin/perl.exe")
 df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE)
 glimpse(df)
 ```
@@ -972,7 +975,7 @@ ggplot(df1, aes(x = total.sf, y = saleprice, color = as.factor(total.flr))) + ge
 
  --- Paul's Data Cleaning
 ## Cleaning paved.drive to saleprice:
-```{r paulsection}
+```{r paul section}
 
 start <- which(colnames(df) == 'paved.drive') 
 end <- which(colnames(df) == 'saleprice') 
@@ -982,7 +985,7 @@ colnames_paul
 ```
 
 Check for any missing values
-```{r}
+```{r paul missing value}
 print(paste('Total NAs: ',sum(is.na(df[start:end]))))
 colnamesWithNA_paul <- NULL
 
@@ -1000,7 +1003,7 @@ colnamesWithNA_paul
 
 It's clear that the fence value of NA indicates a condition where no fence exists
 
-```{r}
+```{r Fence}
 plotCategorical('fence', df)
 index <- which(is.na(df$fence))
 df[index, 'fence'] <- 'No Fence'
@@ -1008,7 +1011,7 @@ df[index, 'fence'] <- 'No Fence'
 
 ## Converting misc.feature value of NA to "No Feature"
 
-Misc Feature and Misc Val are connected fields.  It looks like misc.val should be none-zero when a non-NA value exists in Misc,feature and should be zero when misc.feature is NA.   
+Misc Feature and Misc Val are connected fields.  It looks like misc.val should be non-zero when a non-NA value exists in Misc,feature and should be zero when misc.feature is NA.   
 
 The following code will 
   1) return all rows (if there are any) where the misc.val is greater than 0 and the misc.feature is missing and
@@ -1024,32 +1027,115 @@ It appears that misc.value is > 0 for houses that have misc,features and zero fo
 
 It's clear that the misc.feature value of NA indicates a condition where no misc feature exists.
 
-```{r}
+```{r checking misc.feature}
 index <- which(is.na(df$misc.feature))
 df[index, 'misc.feature'] <- 'No Feature'
 plotCategorical('misc.feature', df)
 ```
 Each of the misc.feature factors have an imputed value assigned by the evaluator which may be an attempt to indicate a contribution to the ultimate sale price.
-```{r}
+```{r checking misc feature and misc value}
 ggplot(df, aes(x = factor(misc.feature), y = misc.val)) + geom_boxplot(aes(fill = factor(misc.feature))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
 
-## Other categorical variables
-```{r}
+## Sales Type
+
+Sale Type (Nominal): Cleaning up trailing spaces in code.
+		
+       WD 	Warranty Deed - Conventional
+       CWD	Warranty Deed - Cash
+       VWD	Warranty Deed - VA Loan
+       New	Home just constructed and sold
+       COD	Court Officer Deed/Estate
+       Con	Contract 15% Down payment regular terms
+       ConLw	Contract Low Down payment and low interest
+       ConLI	Contract Low Interest
+       ConLD	Contract Low Down
+       Oth	Other
+
+We are combining all Non New TYpes into one and exclude COD rows
+
+      WD, CWD, VWD Con, ConLw, ConLI, ConLD, Oth -> Existing
+      New -> New
+      COD -> drop observation   (see T Test results)
+      
+      Note that new will overlap with house.age.  We believe that the New attribute indicates no prior occupant regardless of the age of the house in much the same fashion as the treatment of new or used cars.  We have corrected the instance where age is 89 years and flagged as new
+
+```{r sales.type}
+# trim trailing blanks from sales.type
+trim.trailing <- function (x) sub("\\s+$", "", x)
+df$sale.type = sapply(df$sale.type,trim.trailing)
+
+#correcting New sales type for old house ... assume WD
+index.sale.type <- which(df$sale.type=="New" & df$house.age == 89)
+df[index.sale.type, "sale.type"] <- "WD"
+
+table(df$sale.condition, df$sale.type)
 plotCategorical('sale.type', df)
 ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
-```
+t.test(df$saleprice[df$sale.type=="WD"], df$saleprice[df$sale.type=="COD"])
 
-```{r}
+ggplot(subset(df, df$house.age < 6), aes(x = factor(sale.type))) + geom_bar() + facet_grid(~house.age) +
+ theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=8))
+
+index <- which(df$sale.type == "WD" | df$sale.type == "CWD"| df$sale.type == "VWD"| df$sale.type == "Con"| df$sale.type ==  "ConLw" | df$sale.type ==  "ConLI"| df$sale.type == "ConLD" | df$sale.type == "Oth")
+
+df[index, 'sale.type'] <- 'Existing'
+
+index <- which(df$sale.type == "COD")
+df <- df[-index, ]
+
+ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+
+```
+## Sale Condition
+
+We recommend that for the purpose of forecasting a price:
+
+1. Include and classify as Normal
+
+       Normal	Normal Sale [No action]
+      
+       Partial	Home was not completed when last assessed (associated with New Homes)
+        [It should be noted that Sale TYpe of "New" overlaps with Sales Condition of "Partial".  All but 6 of the Partial are also New Sales Type. We therefore recommend that we recode "Partial" as "Normal" and rely on the Sales TYpe of "New"]
+
+       Alloca	Allocation - two linked properties with separate deeds, typically condo with a garage unit 
+        [It should be noted that we have 16 properties whose sales are clearly linked i.e, same sale month/year, same neighbood, same leading PID -- We believe that the purchase price has been allocated between the two entries and have therefore recoded these as Normal]
+        
+       AdjLand	Adjoining Land Purchase
+        [It should be noted that we have 9 properties whose sales are clearly linked i.e, same sale month/year,           same neighbood, same leading PID. -- We believe that the purchase price has been allocated between the two entries and have therefore recoded these as Normal]
+        
+2. Exclude uncertain terms and conditions.  The results of a T-test against purchase price indicate that a siginificant difference exists between the prices for sales with these conditions which warrants their removal from the price prediction dataset.
+
+       Abnorml	Abnormal Sale -  trade, foreclosure, short sale -> 188
+
+       Family	Sale between family members -> 46
+
+```{r sale.condition}
+index <- which(df$sale.condition == "Partial")
+df[index, 'sale.condition'] <- 'Normal'
+index <- which(df$sale.condition == "Alloca")
+df[index, 'sale.condition'] <- 'Normal'
+index <- which(df$sale.condition == "AdjLand")
+df[index, 'sale.condition'] <- 'Normal'
 plotCategorical('sale.condition', df)
 ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.condition))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+
+t.test(df$saleprice[df$sale.condition=="Normal"], df$saleprice[df$sale.condition=="Abnorml"])
+t.test(df$saleprice[df$sale.condition=="Normal"], df$saleprice[df$sale.condition=="Family"])
+
+index <- which(df$sale.condition == "Abnorml")
+df <- df[-index,] 
+index <- which(df$sale.condition == "Family")
+df <- df[-index,] 
+
 ```
+As a result the transformation, all Sales are now treasted as Normal
 
 ## Creating a Saledate 
 
-A sale date as a combination of the month and year might help with the analysis of effect over time.
+We are creating a sale date as a combination of the mo.sold, a constant "01" [Note: There is no day.sold] and yr.sold to help with a potential time series analysis.
 
-```{r}
+```{r sale date creation}
 df$sale.date <- as.Date(paste(df$mo.sold,c("01"),df$yr.sold, sep = "/"), "%m/%d/%Y")
 ggplot(df, aes(x = factor(sale.date), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.date))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
 ```
@@ -1057,7 +1143,7 @@ ggplot(df, aes(x = factor(sale.date), y = saleprice)) + geom_boxplot(aes(fill = 
 # Write cleaned data to csv
 
 ```{r write to csv}
-# write_csv(df, "cleaned_housing.csv")
+write_csv(df, "cleaned_housing.csv")
 ```
 
 I am waiting until all of our cleaning is done to uncomment this. 
