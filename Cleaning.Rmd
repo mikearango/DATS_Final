@@ -560,20 +560,19 @@ bsmtNAfunction <- function(x){
     FALSE
   }
 }
-
+#apply the function to assigned variables for cleaning section
 noBasmentLogical <- apply(df[,start:end], 1, bsmtNAfunction)
-
-table(noBasmentLogical) # 78 observations have no basement for all 5 categories.
-
+# 78 observations have no basement for all 5 categories.
+table(noBasmentLogical) 
 # replace NA's with "No Basement"
 df[, c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2')][is.na(df[, c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2')])] <- "No Basement"
 ```
 
 ### Drop NA's in other variables 
 ```{r drop NA in others}
-
+# remove fixed columns from list
 colnamesWithNA_yesh <- colnamesWithNA_yesh[! (colnamesWithNA_yesh %in% c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2'))]
-
+# calculate number of dropped observations
 obsDropped <- dim(df)[1] - dim(df[complete.cases(df[,colnamesWithNA_yesh]),])[1]
 df <- df[complete.cases(df[,colnamesWithNA_yesh]),]
 ```
@@ -598,29 +597,45 @@ plotCategorical('heating.qc', df)
 plotCategorical('central.air', df)
 ```
 
-
-Because `r round(2587/(2587+23+9+7+4),4) * 100`% of `roof.matl` (roof material) is `CompShg` with the remainign spread across 7 categories, we transformed the data to Comp.Shg or not.
-```{r}
-
+Because `r round(2587/(2587+23+9+7+4),4) * 100`% of `roof.matl` (roof material) is `CompShg` with the remaining spread across 7 categories, we transformed the data to Comp.Shg or not.
+```{r change roof matl}
+# Change roof.matl to CompShg and Other
 df$roof.matl <- ifelse(df$roof.matl == 'CompShg', 'CompShg', 'Other')
-
 ```
 
 Due to similar reasoning as `roof.matl`, `heating` is transformed to GasA, GasW, and other.
 
-```{r}
-
-df$heating <- ifelse(df$heating == 'GasA' | df$heating =='GasW', df$heating, 'Other')
-
+```{r combine lvls of heating}
+# check median sale price by heating type
+df %>% group_by(heating) %>% summarise(median(saleprice))
+# Combine Hot Water sources
+index <- which(df$heating == "GasW" | df$heating == "OthW")
+df[index, 'heating'] <- "HotW"
+# make all else other
+index <- which(df$heating != "GasA" & df$heating != "HotW")
+df[index, 'heating'] <- "Other"
 ```
 
+From the barplot of `bsmt.exposure` it seems as if there is an unnamed level of the variable. Looking at median sale price by the type of basement exposure, we can see this is true. 
+
+```{r bsmt exposure changes}
+df %>% group_by(bsmt.exposure) %>% summarise(median(saleprice))
+# change no -> no basement 
+index <- which(df$bsmt.exposure == "No")
+df[index, 'bsmt.exposure'] <- "No Exposure"
+# look again
+df %>% group_by(bsmt.exposure) %>% summarise(median(saleprice))
+# which are not labeled
+index <- which(df$bsmt.exposure == "")
+df[index, ]
+```
 
 
 ## Electrical
 
 The electrical variable identifies the electrical system in the sold home. 2677 homes (91.52%) use Standard Circuit Breakers & Romex. Nominal Variable.
 
-I decided to change the names of the electrical categories to shorter abbreviations.
+We decided to change the names of the electrical categories to shorter abbreviations.
 
 ```{r}
 table(df$electrical)
