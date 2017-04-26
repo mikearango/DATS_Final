@@ -616,7 +616,7 @@ index <- which(df$heating != "GasA" & df$heating != "HotW")
 df[index, 'heating'] <- "Other"
 ```
 
-From the barplot of `bsmt.exposure` it seems as if there is an unnamed level of the variable. Looking at median sale price by the type of basement exposure, we can see this is true. 
+From the barplot of `bsmt.exposure` it seems as if there is an unnamed level of the variable. Looking at median sale price by the type of basement exposure, we can see this is true. These 3 observations are dropped.
 
 ```{r bsmt exposure changes}
 df %>% group_by(bsmt.exposure) %>% summarise(median(saleprice))
@@ -625,9 +625,9 @@ index <- which(df$bsmt.exposure == "No")
 df[index, 'bsmt.exposure'] <- "No Exposure"
 # look again
 df %>% group_by(bsmt.exposure) %>% summarise(median(saleprice))
-# which are not labeled
+# drop observations for basement exposure which are not labeled
 index <- which(df$bsmt.exposure == "")
-df[index, ]
+df <- df[-index, ]
 ```
 
 
