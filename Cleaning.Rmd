@@ -681,8 +681,8 @@ Ordered the df frame by above ground area, checked the head and tail to compare 
 ```{r}
 summary(df$x1st.flr.sf)
 sort.area <- df[order(df$gr.liv.area),]
-head(subset(sort.area, select = c(x, x1st.flr.sf, gr.liv.area)))
-tail(subset(sort.area, select = c(x, x1st.flr.sf, gr.liv.area)))
+head(subset(sort.area, select = c(x1st.flr.sf, gr.liv.area)))
+tail(subset(sort.area, select = c(x1st.flr.sf, gr.liv.area)))
 ```
 
 ## Second Floor Square Feet
@@ -778,11 +778,11 @@ table(df$bedroom.abvgr)
 bedless <- df %>% filter(bedroom.abvgr == 0) 
 bedless
 #Checking how many rooms are in each sale with 0 bedrooms
-bedless1 <- subset(bedless, select = c(x, totrms.abvgrd))
+bedless1 <- subset(bedless, select = c(totrms.abvgrd))
 bedless1
 
 #Comparing the basement area and above ground area of the homes with no above ground bedrooms
-area.compare <- subset(bedless, select = c(x, total.bsmt.sf, gr.liv.area))
+area.compare <- subset(bedless, select = c(total.bsmt.sf, gr.liv.area))
 area.compare
 
 test_model <- lm(totrms.abvgrd ~ bedroom.abvgr, data = df)
