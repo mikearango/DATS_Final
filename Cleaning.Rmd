@@ -563,20 +563,19 @@ bsmtNAfunction <- function(x){
     FALSE
   }
 }
-
+#apply the function to assigned variables for cleaning section
 noBasmentLogical <- apply(df[,start:end], 1, bsmtNAfunction)
-
-table(noBasmentLogical) # 78 observations have no basement for all 5 categories.
-
+# 78 observations have no basement for all 5 categories.
+table(noBasmentLogical) 
 # replace NA's with "No Basement"
 df[, c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2')][is.na(df[, c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2')])] <- "No Basement"
 ```
 
 ### Drop NA's in other variables 
 ```{r drop NA in others}
-
+# remove fixed columns from list
 colnamesWithNA_yesh <- colnamesWithNA_yesh[! (colnamesWithNA_yesh %in% c('bsmt.qual','bsmt.cond','bsmt.exposure','bsmtfin.type.1','bsmtfin.type.2'))]
-
+# calculate number of dropped observations
 obsDropped <- dim(df)[1] - dim(df[complete.cases(df[,colnamesWithNA_yesh]),])[1]
 df <- df[complete.cases(df[,colnamesWithNA_yesh]),]
 ```
@@ -601,11 +600,45 @@ plotCategorical('heating.qc', df)
 plotCategorical('central.air', df)
 ```
 
+Because `r round(2587/(2587+23+9+7+4),4) * 100`% of `roof.matl` (roof material) is `CompShg` with the remaining spread across 7 categories, we transformed the data to Comp.Shg or not.
+```{r change roof matl}
+# Change roof.matl to CompShg and Other
+df$roof.matl <- ifelse(df$roof.matl == 'CompShg', 'CompShg', 'Other')
+```
+
+Due to similar reasoning as `roof.matl`, `heating` is transformed to GasA, GasW, and other.
+
+```{r combine lvls of heating}
+# check median sale price by heating type
+df %>% group_by(heating) %>% summarise(median(saleprice))
+# Combine Hot Water sources
+index <- which(df$heating == "GasW" | df$heating == "OthW")
+df[index, 'heating'] <- "HotW"
+# make all else other
+index <- which(df$heating != "GasA" & df$heating != "HotW")
+df[index, 'heating'] <- "Other"
+```
+
+From the barplot of `bsmt.exposure` it seems as if there is an unnamed level of the variable. Looking at median sale price by the type of basement exposure, we can see this is true. These 3 observations are dropped.
+
+```{r bsmt exposure changes}
+df %>% group_by(bsmt.exposure) %>% summarise(median(saleprice))
+# change no -> no basement 
+index <- which(df$bsmt.exposure == "No")
+df[index, 'bsmt.exposure'] <- "No Exposure"
+# look again
+df %>% group_by(bsmt.exposure) %>% summarise(median(saleprice))
+# drop observations for basement exposure which are not labeled
+index <- which(df$bsmt.exposure == "")
+df <- df[-index, ]
+```
+
+
 ## Electrical
 
 The electrical variable identifies the electrical system in the sold home. 2677 homes (91.52%) use Standard Circuit Breakers & Romex. Nominal Variable.
 
-I decided to change the names of the electrical categories to shorter abbreviations.
+We decided to change the names of the electrical categories to shorter abbreviations.
 
 ```{r}
 table(df$electrical)
@@ -875,13 +908,12 @@ table(as.factor(df$garage.type))
 summary(df$garage.yr.blt)
 ```
 
-As can be seen, garage year is missing 159 values and the maximum value is 2207, which is obviously an error as that year has yet to occur, unless of course they meant 2207 B.C. I filtered the data set to test for homes built later than 2010, which is the tail date of the data set. Only one observation has this error. As the home was built in 2006 and remodeled in 2007, we can assume that the garage was built in 2007 and an imput error occured. 
+As can be seen, garage year is missing 159 values and the maximum value is 2207, which is obviously an error as that year has yet to occur, unless of course they meant 2207 B.C. I filtered the data set to test for homes built later than 2010, which is the tail date of the data set. Only one observation has this error. As the home was built in 2006 and remodeled in 2007, we can assume that the garage was built in 2007 and an imput error occured.
 
 ```{r}
+missing.garage.year <- df %>% filter(is.na(garage.yr.blt) & !is.na(garage.type))
+missing.garage.year
 # 1357 and 2237 have missing garage data
-index <- which(is.na(df$garage.yr.blt) & !is.na(df$garage.type))
-df <- df[-index, ]
-# drop these 2 observations***
 ```
 
 ```{r}
@@ -947,6 +979,14 @@ index.garage.cond <- which(is.na(df$garage.cond))
 df[index.garage.cond, 'garage.cond'] <- 'None'
 ```
 
+## Removing Data
+
+Observation x=2237 is missing all garage data except for garage.type, indicting that there is a garage but no data on it. I have decided to remove it.
+
+```{r}
+df <- df %>% filter(x != 2237)
+```
+
 ## Exploratory Data Analysis
 
 ```{r garage quality vs. garage condition}
@@ -963,7 +1003,9 @@ library(graphics)
 
 df1 <- df %>% mutate(total.sf = total.bsmt.sf + x1st.flr.sf + x2nd.flr.sf) %>% filter(!is.na(total.sf)) %>% filter(saleprice < 650000) %>% filter(total.sf < 7500)
 
-df1$total.flr <- ifelse(df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf == 0, 1,
+df1$total
+
+.flr <- ifelse(df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf == 0, 1,
                 ifelse((df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf > 0) |
                          (df1$total.bsmt.sf > 0 & df1$x2nd.flr.sf == 0), 2, 3))
 
@@ -971,6 +1013,10 @@ df1$total.flr <- ifelse(df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf == 0, 1,
 ggplot(df1, aes(x = total.sf, y = saleprice, color = as.factor(total.flr))) + geom_point()
 ```
 
+```{r}
+tbl1 <- df %>% 
+ggplot(df, aes(x = ))
+```
 
 
  --- Paul's Data Cleaning
@@ -1127,6 +1173,7 @@ index <- which(df$sale.condition == "Abnorml")
 df <- df[-index,] 
 index <- which(df$sale.condition == "Family")
 df <- df[-index,] 
+
 
 ```
 As a result the transformation, all Sales are now treasted as Normal
