@@ -1,0 +1,365 @@
+---
+title: "Modeling"
+author: "Michael Arango"
+date: "4/27/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Importing and Data Pre-processing
+
+### Import libraries and data
+```{r init, message = FALSE}
+# read in libraries
+library(tidyverse)
+library(caret)
+# read in train and test data
+training <- read.csv("train_housing.csv", stringsAsFactors = TRUE)
+test <- read.csv("test_housing.csv")
+```
+
+Since we split our data up into train and test sets after cleaning, all we need to do is pre-process and start modeling. 
+
+### Pre-process
+```{r preprocess}
+# make a dataframe of all numeric features
+num_features = names(which(sapply(training, is.numeric)))
+df.numeric = training[num_features]
+# make a dataframe of all categorical features
+cat_features = names(which(sapply(training, is.factor)))
+# convert all categorical features to numeric variables for modeling
+training[cat_features] <- sapply(training[cat_features], as.integer)
+```
+
+Most machine learning models do better if we convert factors to integers when we run models, so we converted all categorical variables to integers. Then we created our own folds to be used in k-fold cross validation (with k = 5) so that we can compare the out-of-sample RMSE of our trained models on the same cross validation folds. This ensures we have an apples-to-apples comparison of our models. 
+
+```{r folds}
+# set seed for reproducibility
+set.seed(256)
+# create 5 folds to be used in cross validation
+myFolds <- createFolds(training, k = 5)
+# create a custom trainControl object to use our folds; index = myFolds
+myControl = trainControl(verboseIter = TRUE, index = myFolds)
+```
+
+In addition to making our own folds, we had to create a custom `trainControl` object so we can specify to use these folds. Now we are ready to model. 
+
+# Modeling
+
+## Random Forest Regression
+
+```{r random forest1}
+set.seed(12)
+# train the model 
+modelrf1 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  training,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(2, 80, 2)),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model
+print(modelrf1)
+# plot the number of randomly selected predictors
+plot(modelrf1)
+# print min RMSE from the model
+print(min(modelrf1$results[['RMSE']]))
+```
+
+We run a kitchen sink model (includes all independent variables) to start since random forest does its own feature selection. The optimal number of predictors at each split was 70, so we train another random forest regression model using $mtry = 52$. 
+
+```{r randomforest2}
+set.seed(606)
+# train the model 
+modelrf2 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  training,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = 52),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model summary
+print(modelrf2)
+# print results from the model
+print(modelrf2$results)
+```
+
+Then, we decided to remove the zero variance predictors before running the random forest regression. 
+
+```{r}
+set.seed(1760)
+# train the model 
+modelrf3 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  training,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(2, 40, 2)),
+  preProcess = c("zv"),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model summary
+print(modelrf3)
+# print results from the model
+print(min(modelrf2$results$RMSE))
+# plot RMSE 
+plot(modelrf3)
+```
+
+This actually made the model worse. To decrease dimensionality, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis before feeding the data into the random forest model. 
+
+```{r}
+set.seed(17)
+# train the model 
+modelrf4 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  training,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(1, 15, 1)),
+  preProcess = c("nzv", "center", "scale", "pca"),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model summary
+print(modelrf4)
+# print results from the model
+print(min(modelrf4$results$RMSE))
+# plot
+plot(modelrf4)
+```
+
+This resulted in the best model so far. We ran a similar model but removed all zero variance predictors before normalizing and running PCA instead of near-zero variance predictors. 
+
+```{r}
+set.seed(789)
+# train the model 
+modelrf5 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  training,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(2, 14, 1)),
+  preProcess = c("zv", "center", "scale", "pca"),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model summary
+print(modelrf5)
+# print results from the model
+print(min(modelrf5$results$RMSE))
+# plot
+plot(modelrf5)
+```
+
+This model is slightly worse than the other. 
+
+## Elastic Net Regularization
+
+*Add a chunk here about what this means.* 
+
+```{r elasticnet1}
+set.seed(500)
+# Train glmnet with custom trainControl and tuning: model
+model <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  tuneGrid = expand.grid(alpha = seq(0,1,0.1), 
+                         lambda = seq(0.0001, 1, 10)),
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmnet",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(model)
+# plot RMSE vs alpha
+plot(model)
+# Print minimum RMSE
+print(min(model2$results$RMSE))
+```
+
+Elastic net Regularization produces the best model yet. Our grid search tells us that regardless of our regularization parameter (lambda), a mixing percentage (alpha) of 0.3 is optimal. Now we run another elastic net but with alpha fixed to 0.3 and run a grid search on lambda. 
+
+```{r}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+model2 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  tuneGrid = expand.grid(alpha = 0.3, 
+                         lambda = (0:10) * 1000),
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmnet",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(model2)
+# plot RMSE vs alpha
+plot(model2)
+# Print minimum RMSE
+print(min(model2$results$RMSE))
+```
+
+Our grid search show that a lambda of 5000 minimizes the RMSE of our model. This also produces the best model so far. 
+
+```{r}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+model4 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  tuneGrid = expand.grid(alpha = 0.3, 
+                         lambda = (0:10) * 1000),
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmnet",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(model4)
+# plot RMSE vs alpha
+plot(model4)
+# Print minimum RMSE
+print(min(model4$results$RMSE))
+```
+
+
+```{r}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+model5 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "leapForward",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(model5)
+# plot RMSE vs alpha
+plot(model5)
+# Print minimum RMSE
+print(min(model5$results$RMSE))
+```
+
+```{r}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+model6 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "leapForward",
+  preProcess = c("zv", "center", "scale", "pca"),
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(model6)
+# plot RMSE vs alpha
+plot(model6)
+# Print minimum RMSE
+print(min(model6$results$RMSE))
+```
+
+```{r}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+model8 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "leapSeq",
+  preProcess = c("zv", "center", "scale", "pca"),
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(model8)
+# plot RMSE vs alpha
+plot(model8)
+# Print minimum RMSE
+print(min(model8$results$RMSE))
+```
+
+
+
+```{r}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+model9 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "pls",
+  preProcess = c("nzv", "center", "scale"),
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(model9)
+# plot RMSE vs alpha
+plot(model9)
+# Print minimum RMSE
+print(min(model9$results$RMSE))
+```
+
+
+
+```{r}
+# Identify near zero variance predictors: remove_cols
+remove_cols <- nearZeroVar(training, names = TRUE, 
+                           freqCut = 2, uniqueCut = 20)
+# Get all column names from train_x: all_cols
+all_cols <- names(training)
+# Remove from data: train_x_small
+train_2 <- training[ , setdiff(all_cols, remove_cols)]
+```
+
