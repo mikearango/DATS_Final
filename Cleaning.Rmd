@@ -1144,15 +1144,37 @@ When modeling, we can filter as needed based on sale condition to just include n
 
 # Write cleaned data to csv
 
-```{r write to csv}
+```{r check for missing data}
 # obs and vars after cleaning
 endObs <- dim(df)[1]
 endVars <- dim(df)[2]
 # check to see if fixed all missing data
 any(is.na(df))
-# cleaned housing file
-write_csv(df, "cleaned_housing.csv")
 ```
 
 Our cleaned dataset has `r endObs` observations of `r endVars` variables. Overall, we dropped `r startObs-endObs` observations (`r round((startObs-endObs)/startObs * 100, 2)`%).
+
+## Train/Test Split
+```{r train test split}
+# Set seed
+set.seed(42)
+# Shuffle row indices: rows
+rows <- sample(nrow(df))
+# Randomly order data
+df <- df[rows, ]
+# Determine row to split on: split
+split <- round(nrow(df) * 0.70)
+# Create train
+train <- df[1:split, ]
+# Create test
+test <- df[(split + 1):nrow(df), ]
+```
+
+
+```{r write to csv}
+# cleaned housing file
+write_csv(df, "cleaned_housing.csv")
+write_csv(train, "train_housing.csv")
+write_csv(test, "test_housing.csv")
+```
 
