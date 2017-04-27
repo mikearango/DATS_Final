@@ -983,14 +983,15 @@ df <- df[-index,]
 
 ```{r}
 index <- which(is.na(df$garage.yr.blt))
-df[index, 'garage.yr.blt'] <- "No garage"
+df[index, 'garage.yr.blt'] <- "0"
 # plot to see if it makes a difference to keep or not
 test <- df %>% filter(garage.yr.blt != "No garage")
 qplot(as.integer(test$garage.yr.blt), test$saleprice)
-# house age will take care of this
-df <- df %>% dplyr::select(-garage.yr.blt)
+# convert to number
+df$garage.yr.blt <- as.integer(df$garage.yr.blt)
 ```
 
+A garage year built of 0 means there is no garage.
 
 ```{r}
 # Are there any missing values in the data
