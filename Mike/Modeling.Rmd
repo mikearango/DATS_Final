@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Importing and Data Pre-processing
 
 ### Import libraries and data
+
 ```{r init, message = FALSE}
 # read in libraries
 library(tidyverse)
@@ -200,7 +201,7 @@ enet2 <- train(
   # data
   training,
   # set grid search parameters for alpha and lambda
-  tuneGrid = expand.grid(alpha = 0.3, 
+  tuneGrid = expand.grid(alpha = 1, 
                          lambda = (0:10) * 1000),
   # use glmnet method for lasso, ridge, and elastic net 
   method = "glmnet",
@@ -328,6 +329,16 @@ p2 <- predict(modelrf2, test)
 error2 <- p2 - test$saleprice
 RMSE2 <- sqrt(mean(error2^2))
 RMSE2
+
+p3 <- predict(enet2, test)
+error3 <- p3 - test$saleprice
+RMSE3 <- sqrt(mean(error3^2))
+RMSE3
+
+p4 <- predict(enet1, test)
+error4 <- p4 - test$saleprice
+RMSE4 <- sqrt(mean(error4^2))
+RMSE4
 ```
 
 The test RMSE for the first random forest model ends up being the best at `r RMSE`. 
