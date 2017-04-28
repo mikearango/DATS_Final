@@ -74,10 +74,31 @@ saleprice_RMSE.4 <- sqrt(saleprice_MSE.4)
 stargazer(df_predict.1, df_predict.2, df_predict.3, df_predict.4, type="text")
 ```
 
-Comparing the 4 Models, we see:
-  * Model 1 (1 Component): `r saleprice_RMSE.1`
-  * Model 2 (7 Component): `r saleprice_RMSE.2`
-  * Model 3 (24 Component): `r saleprice_RMSE.3`
-  * Model 4 (25 Component): `r saleprice_RMSE.4`
+Comparing the 4 Models, we see the following RMSE Values:
+
+  * Model 1 (1 Component): `r paste(round(saleprice_RMSE.1))`
+  * Model 2 (7 Component): `r paste(round(saleprice_RMSE.2))`
+  * Model 3 (24 Component): `r paste(round(saleprice_RMSE.3))`
+  * Model 4 (25 Component): `r paste(round(saleprice_RMSE.4))`
 
 Based on this, we can see that Model 2 is the ideal model (7 Components). Model 3 appears to be overfitting, and Model 1 appears to underfit slightly. Model 4 has a lower RSME than Model 2, but it may be at risk for overfitting (high number of components and RSME for 3 > RSME for 2).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
