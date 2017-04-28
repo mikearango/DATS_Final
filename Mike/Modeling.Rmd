@@ -32,6 +32,10 @@ df.numeric = training[num_features]
 cat_features = names(which(sapply(training, is.factor)))
 # convert all categorical features to numeric variables for modeling
 training[cat_features] <- sapply(training[cat_features], as.integer)
+test[cat_features] <- sapply(test[cat_features], as.integer)
+# split test into x and y
+test_x <- test %>% dplyr::select(-saleprice)
+test_y <- test %>% dplyr::select(saleprice)
 ```
 
 Most machine learning models do better if we convert factors to integers when we run models, so we converted all categorical variables to integers. Then we created our own folds to be used in k-fold cross validation (with k = 5) so that we can compare the out-of-sample RMSE of our trained models on the same cross validation folds. This ensures we have an apples-to-apples comparison of our models. 
@@ -51,7 +55,7 @@ In addition to making our own folds, we had to create a custom `trainControl` ob
 
 ## Random Forest Regression
 
-```{r random forest1}
+```{r rf1}
 set.seed(12)
 # train the model 
 modelrf1 <- train(
@@ -74,10 +78,10 @@ plot(modelrf1)
 print(min(modelrf1$results[['RMSE']]))
 ```
 
-We run a kitchen sink model (includes all independent variables) to start since random forest does its own feature selection. The optimal number of predictors at each split was 70, so we train another random forest regression model using $mtry = 52$. 
+We run a kitchen sink model (includes all independent variables) to start since random forest does its own feature selection. The optimal number of predictors at each split was 52. Next, we decided to remove the zero variance predictors before running the random forest regression. 
 
-```{r randomforest2}
-set.seed(606)
+```{r rf2}
+set.seed(1760)
 # train the model 
 modelrf2 <- train(
   # formula
@@ -87,20 +91,24 @@ modelrf2 <- train(
   # fast random forest
   method = "ranger",
   # grid search for optimal number of columns to randomly sample at each split
-  tuneGrid = data.frame(mtry = 52),
+  tuneGrid = data.frame(mtry = seq(2, 40, 2)),
+  # preprocess by removing sero variance predictors
+  preProcess = "zv",
   # set trainCrol as our custom object
   trControl = myControl
 )
 # print the model summary
 print(modelrf2)
 # print results from the model
-print(modelrf2$results)
+print(min(modelrf2$results$RMSE))
+# plot RMSE 
+plot(modelrf2)
 ```
 
-Then, we decided to remove the zero variance predictors before running the random forest regression. 
+This actually made the model slightly worse. To decrease dimensionality, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis before feeding the data into the random forest model. 
 
-```{r}
-set.seed(1760)
+```{r rf3}
+set.seed(17)
 # train the model 
 modelrf3 <- train(
   # formula
@@ -110,23 +118,24 @@ modelrf3 <- train(
   # fast random forest
   method = "ranger",
   # grid search for optimal number of columns to randomly sample at each split
-  tuneGrid = data.frame(mtry = seq(2, 40, 2)),
-  preProcess = c("zv"),
+  tuneGrid = data.frame(mtry = seq(1, 15, 1)),
+  # preProcess
+  preProcess = c("nzv", "center", "scale", "pca"),
   # set trainCrol as our custom object
   trControl = myControl
 )
 # print the model summary
 print(modelrf3)
 # print results from the model
-print(min(modelrf2$results$RMSE))
-# plot RMSE 
+print(min(modelrf3$results$RMSE))
+# plot
 plot(modelrf3)
 ```
 
-This actually made the model worse. To decrease dimensionality, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis before feeding the data into the random forest model. 
+The third random forest model resulted in the best model so far. Next, we ran a similar model but removed all zero variance predictors before normalizing and running PCA instead of near-zero variance predictors to see if this made a difference. 
 
-```{r}
-set.seed(17)
+```{r rf4}
+set.seed(789)
 # train the model 
 modelrf4 <- train(
   # formula
@@ -136,8 +145,9 @@ modelrf4 <- train(
   # fast random forest
   method = "ranger",
   # grid search for optimal number of columns to randomly sample at each split
-  tuneGrid = data.frame(mtry = seq(1, 15, 1)),
-  preProcess = c("nzv", "center", "scale", "pca"),
+  tuneGrid = data.frame(mtry = seq(2, 14, 1)),
+  # preProcess
+  preProcess = c("zv", "center", "scale", "pca"),
   # set trainCrol as our custom object
   trControl = myControl
 )
@@ -149,42 +159,16 @@ print(min(modelrf4$results$RMSE))
 plot(modelrf4)
 ```
 
-This resulted in the best model so far. We ran a similar model but removed all zero variance predictors before normalizing and running PCA instead of near-zero variance predictors. 
-
-```{r}
-set.seed(789)
-# train the model 
-modelrf5 <- train(
-  # formula
-  saleprice ~ .,
-  # data
-  training,
-  # fast random forest
-  method = "ranger",
-  # grid search for optimal number of columns to randomly sample at each split
-  tuneGrid = data.frame(mtry = seq(2, 14, 1)),
-  preProcess = c("zv", "center", "scale", "pca"),
-  # set trainCrol as our custom object
-  trControl = myControl
-)
-# print the model summary
-print(modelrf5)
-# print results from the model
-print(min(modelrf5$results$RMSE))
-# plot
-plot(modelrf5)
-```
-
-This model is slightly worse than the other. 
+Removing zero variance predictors as opposed to near-zero variance predictors before centering, scaling, and running PCA increased the RMSE slightly. 
 
 ## Elastic Net Regularization
 
 *Add a chunk here about what this means.* 
 
-```{r elasticnet1}
+```{r enet1}
 set.seed(500)
 # Train glmnet with custom trainControl and tuning: model
-model <- train(
+enet1 <- train(
   # formula
   saleprice ~ ., 
   # data
@@ -198,19 +182,19 @@ model <- train(
   trControl = myControl
 )
 # Print model to console
-print(model)
+print(enet1)
 # plot RMSE vs alpha
-plot(model)
+plot(enet1)
 # Print minimum RMSE
-print(min(model2$results$RMSE))
+print(min(enet1$results$RMSE))
 ```
 
 Elastic net Regularization produces the best model yet. Our grid search tells us that regardless of our regularization parameter (lambda), a mixing percentage (alpha) of 0.3 is optimal. Now we run another elastic net but with alpha fixed to 0.3 and run a grid search on lambda. 
 
-```{r}
+```{r enet2}
 set.seed(1267)
 # Train glmnet with custom trainControl and tuning: model
-model2 <- train(
+enet2 <- train(
   # formula
   saleprice ~ ., 
   # data
@@ -224,44 +208,25 @@ model2 <- train(
   trControl = myControl
 )
 # Print model to console
-print(model2)
+print(enet2)
 # plot RMSE vs alpha
-plot(model2)
+plot(enet2)
 # Print minimum RMSE
-print(min(model2$results$RMSE))
+print(min(enet2$results$RMSE))
 ```
 
-Our grid search show that a lambda of 5000 minimizes the RMSE of our model. This also produces the best model so far. 
+Our grid search show that a lambda of 5000 minimizes the RMSE of our model. By finding the optimal lambda, we were able to decrease our RMSE again.  
 
-```{r}
-set.seed(1267)
+## Step-wise Linear Regression
+
+### Forward Selection
+
+Next we decided to run some step-wise linear regression models. First, we tested forward selection. 
+
+```{r forward}
+set.seed(631)
 # Train glmnet with custom trainControl and tuning: model
-model4 <- train(
-  # formula
-  saleprice ~ ., 
-  # data
-  training,
-  # set grid search parameters for alpha and lambda
-  tuneGrid = expand.grid(alpha = 0.3, 
-                         lambda = (0:10) * 1000),
-  # use glmnet method for lasso, ridge, and elastic net 
-  method = "glmnet",
-  # trainControl
-  trControl = myControl
-)
-# Print model to console
-print(model4)
-# plot RMSE vs alpha
-plot(model4)
-# Print minimum RMSE
-print(min(model4$results$RMSE))
-```
-
-
-```{r}
-set.seed(1267)
-# Train glmnet with custom trainControl and tuning: model
-model5 <- train(
+forward_model <- train(
   # formula
   saleprice ~ ., 
   # data
@@ -273,17 +238,19 @@ model5 <- train(
   trControl = myControl
 )
 # Print model to console
-print(model5)
+print(forward_model)
 # plot RMSE vs alpha
-plot(model5)
+plot(forward_model)
 # Print minimum RMSE
-print(min(model5$results$RMSE))
+print(min(forward_model$results$RMSE))
 ```
 
-```{r}
-set.seed(1267)
+As we can see from the code output, the forward selection model with no pre-processing does not turn out very well because of high levels of multicollinearity in the data. So, in the next forward selection model we pre-process heavily. 
+
+```{r forward2}
+set.seed(442)
 # Train glmnet with custom trainControl and tuning: model
-model6 <- train(
+forward_model2 <- train(
   # formula
   saleprice ~ ., 
   # data
@@ -296,17 +263,23 @@ model6 <- train(
   trControl = myControl
 )
 # Print model to console
-print(model6)
+print(forward_model2)
 # plot RMSE vs alpha
-plot(model6)
+plot(forward_model2)
 # Print minimum RMSE
-print(min(model6$results$RMSE))
+print(min(forward_model2$results$RMSE))
 ```
 
-```{r}
-set.seed(1267)
+This drastically decreases the RMSE from the first forward selection model, but it is still high compared to our better models. 
+
+### Mixed Steps
+
+We decided to run a mixed step-wise regression model with the same pre-processing techniques as the second forward selection model. 
+
+```{r mixed}
+set.seed(343)
 # Train glmnet with custom trainControl and tuning: model
-model8 <- train(
+mixed_model <- train(
   # formula
   saleprice ~ ., 
   # data
@@ -319,47 +292,38 @@ model8 <- train(
   trControl = myControl
 )
 # Print model to console
-print(model8)
+print(mixed_model)
 # plot RMSE vs alpha
-plot(model8)
+plot(mixed_model)
 # Print minimum RMSE
-print(min(model8$results$RMSE))
+print(min(mixed_model$results$RMSE))
 ```
 
-
+# Model Evaluation
 
 ```{r}
-set.seed(1267)
-# Train glmnet with custom trainControl and tuning: model
-model9 <- train(
-  # formula
-  saleprice ~ ., 
-  # data
-  training,
-  # set grid search parameters for alpha and lambda
-  # use glmnet method for lasso, ridge, and elastic net 
-  method = "pls",
-  preProcess = c("nzv", "center", "scale"),
-  # trainControl
-  trControl = myControl
-)
-# Print model to console
-print(model9)
-# plot RMSE vs alpha
-plot(model9)
-# Print minimum RMSE
-print(min(model9$results$RMSE))
+# Create model_list
+model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, rf4 = modelrf4, elastic1 = enet1, 
+                   elastic2 = enet2, forward1 = forward_model, forward2 = forward_model2, mixed = mixed_model)
+# Pass model_list to resamples(): resamples
+resamples <- resamples(model_list)
+# Summarize the results
+summary(resamples)
+# plot the box and whisker plots for the models
+bwplot(resamples, metric = "RMSE")
+dotplot(resamples, metric = "RMSE")
 ```
 
+Based on the combination of lowest RMSE and highest $R^2$, it seems both elastic net regularization models fit the data best. 
 
+# Testing 
 
-```{r}
-# Identify near zero variance predictors: remove_cols
-remove_cols <- nearZeroVar(training, names = TRUE, 
-                           freqCut = 2, uniqueCut = 20)
-# Get all column names from train_x: all_cols
-all_cols <- names(training)
-# Remove from data: train_x_small
-train_2 <- training[ , setdiff(all_cols, remove_cols)]
+```{r test}
+p <- predict(modelrf1, test)
+error <- p - test$saleprice
+RMSE <- sqrt(mean(error^2))
+RMSE
 ```
+
+The test RMSE for the first random forest model ends up being the best at `r RMSE`. 
 
