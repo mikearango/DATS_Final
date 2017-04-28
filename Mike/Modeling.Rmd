@@ -323,6 +323,11 @@ p <- predict(modelrf1, test)
 error <- p - test$saleprice
 RMSE <- sqrt(mean(error^2))
 RMSE
+
+p2 <- predict(modelrf2, test)
+error2 <- p2 - test$saleprice
+RMSE2 <- sqrt(mean(error2^2))
+RMSE2
 ```
 
 The test RMSE for the first random forest model ends up being the best at `r RMSE`. 
