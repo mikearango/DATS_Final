@@ -1142,6 +1142,22 @@ df[index, 'sale.condition'] <- 'Not Normal'
 
 When modeling, we can filter as needed based on sale condition to just include normal sales. 
 
+# Drop outliers of sale price below and above 1st and 99th percentile
+
+```{r dropoutliers}
+init <- dim(df)[1]
+
+histogram(df$saleprice)
+outlierMinMax <- quantile(df$saleprice, c(.01, .99))
+df <- df[ df$saleprice > outlierMinMax[1] & df$saleprice < outlierMinMax[2],  ]
+
+end <- dim(df)[1]
+```
+
+`r init - end` observations were dropped.
+
+``
+
 # Write cleaned data to csv
 
 ```{r check for missing data}
@@ -1158,16 +1174,11 @@ Our cleaned dataset has `r endObs` observations of `r endVars` variables. Overal
 ```{r train test split}
 # Set seed
 set.seed(42)
-# Shuffle row indices: rows
-rows <- sample(nrow(df))
-# Randomly order data
-df <- df[rows, ]
-# Determine row to split on: split
-split <- round(nrow(df) * 0.70)
-# Create train
-train <- df[1:split, ]
-# Create test
-test <- df[(split + 1):nrow(df), ]
+# create partition for train data
+train_index <- createDataPartition(y = df$saleprice, p = 0.7, list = FALSE)
+# index train and test data
+train <- df[train_index, ]
+test <- df[-train_index, ]
 ```
 
 

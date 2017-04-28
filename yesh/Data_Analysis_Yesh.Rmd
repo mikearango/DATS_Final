@@ -14,14 +14,12 @@ library(tidyverse)
 library(pls)
 library(stargazer)
 
-
 df <- read.csv("../train_housing.csv", header=TRUE)
 df_test <- read.csv("../test_housing.csv", header=TRUE)
 ```
 
 # Remove all factor columns from data
 ```{r factordrop}
-
 df_num <- df
 
 for(i in colnames(df)){
@@ -41,11 +39,11 @@ str(df_num)
 
 pcr.saleprice <- pcr(saleprice ~ ., data=df_num, scale=TRUE, validation="CV")
 
-validationplot(pcr.saleprice, val.type = "R2")
+validationplot(pcr.saleprice)
 summary(pcr.saleprice)
 ```
 
-We can see that 1 component explains about 80% of the variance in `saleprice`. This rises only marginally afterwards. The next big jump is from 6 to 7 components, and again from 23 to 24 and 24 to 25 components. 4 Models will be assessed with 1, 7, 24, and 25 components.
+We can see that 1 component explains about 80% of the variance in `saleprice`. This rises only marginally afterwards. The next big jump is from 6 to 7 components, and again from 23 to 24. 3 Models will be assessed with 1, 7, and 24 components.
 
 # Model Validation
 ```{r modelvaldiation}
@@ -65,28 +63,16 @@ df_predict.3 <- data.frame(pcr.predict.3, df_test$saleprice)
 saleprice_MSE.3 <- mean((df_predict.3[,1]-df_predict.3[,2])^2)
 saleprice_RMSE.3 <- sqrt(saleprice_MSE.3)
 
-
-pcr.predict.4 <- predict(pcr.saleprice, df_test, ncomp=25)
-df_predict.4 <- data.frame(pcr.predict.4, df_test$saleprice)
-saleprice_MSE.4 <- mean((df_predict.4[,1]-df_predict.4[,2])^2)
-saleprice_RMSE.4 <- sqrt(saleprice_MSE.4)
-
-stargazer(df_predict.1, df_predict.2, df_predict.3, df_predict.4, type="text")
+stargazer(df_predict.1, df_predict.2, df_predict.3, type="text")
 ```
 
-Comparing the 4 Models, we see the following RMSE Values:
+Comparing the 3 Models, we see the following RMSE Values:
 
   * Model 1 (1 Component): `r paste(round(saleprice_RMSE.1))`
   * Model 2 (7 Component): `r paste(round(saleprice_RMSE.2))`
   * Model 3 (24 Component): `r paste(round(saleprice_RMSE.3))`
-  * Model 4 (25 Component): `r paste(round(saleprice_RMSE.4))`
 
-Based on this, we can see that Model 2 is the ideal model (7 Components). Model 3 appears to be overfitting, and Model 1 appears to underfit slightly. Model 4 has a lower RSME than Model 2, but it may be at risk for overfitting (high number of components and RSME for 3 > RSME for 2).
-
-
-
-
-
+Model 2 appears to be the best, as Model 3 risks overfitting for not a not much better fit.
 
 
 
