@@ -18,17 +18,23 @@ knitr::opts_chunk$set(echo = TRUE)
 # Initializing Packages and Importing Data
 
 ```{r init, message = FALSE}
+# install.packages("gdata")
+# install.packages("tidyverse")
+# install.packages("stringr")
+# install.packages("lubridate")
+# install.packages("scales")
+# install.packages("graphics")
 library(gdata)
 library(tidyverse)
 library(stringr)
 library(lubridate)
 library(scales)
+library(graphics)
 ```
 
 ```{r df summary, message = FALSE}
-#Included alternate version of the read.xls routine to handle the pointer to perl; will remove once we get to the bottom of the issue
-#
-#df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE, perl = "C:/Strawberry/perl/bin/perl.exe")
+# commented out the version Paul needs to use to run and kept normal implementation
+# df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE, perl = "C:/Strawberry/perl/bin/perl.exe")
 df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE)
 glimpse(df)
 ```
@@ -41,6 +47,9 @@ names(df) <- tolower(names(df))
 df <- df %>% 
   dplyr::select(everything(), -order)
 names(df)
+# save original number of obs and vars
+startObs <- dim(df)[1]
+endObs <- dim(df)[2]
 ```
 
 We decided to drop the order variable as it is just a duplicate row index and corresponds to the observation number. 
@@ -119,7 +128,6 @@ table(df$ms.subclass)
 ```
 
 The table shows that most residential sales during this time were one or two-story houses built after 1946. 
-
 ## Zoning Classification
 
 There are 8 different zoning classifications and they range from agricultural to residential. 
@@ -208,7 +216,7 @@ frontage_by_hood <- frontage_by_hood %>%
 index <- which(is.na(df$lot.frontage))
 ```
 
-There are no missing values in the neighborhood data, but some neighborhoods have missing lot frontage data for every house listed in that neighborhood. The `GrnHill` and `Landmark` neighborhoods are missing frontage data for every listed property in the dataframe. We decided to drop these as both neighborhoods only account for *three* observations in the original dataset. 
+There are no missing values in the neighborhood data, but some neighborhoods have missing lot frontage data for every house listed in that neighborhood. The `GrnHill` and `Landmark` neighborhoods are missing frontage data for every listed property in the dataset. We decided to drop these as both neighborhoods only account for *three* observations in the original dataset. 
 
 There is no single variable in the dataset that gives a reason why these values are missing. We make the assumption that the lot frontage for a given house is fairly similar to the other properties in the same neighborhood. So, we use median imputation to fill these missing values and reevaluate whether we want to add this variable to our models later on. 
 
@@ -253,7 +261,7 @@ ggplot(df, aes(x = log(lot.area), y = saleprice)) +
 df$ln.lot.area <- log(df$lot.area)
 ```
 
-There seems to be some very high end outliers influencing the scatterplot of sale price and lot area--some lot areas are much larger than most. For this reason, we look at the natural log of lot area instead. We also add a variable to represent the natural log of lot area. 
+There seems to be some very high end outliers influencing the scatter plot of sale price and lot area--some lot areas are much larger than most. For this reason, we look at the natural log of lot area instead. We also add a variable to represent the natural log of lot area. 
 
 ## Street 
 
@@ -619,7 +627,7 @@ index <- which(df$heating != "GasA" & df$heating != "HotW")
 df[index, 'heating'] <- "Other"
 ```
 
-From the barplot of `bsmt.exposure` it seems as if there is an unnamed level of the variable. Looking at median sale price by the type of basement exposure, we can see this is true. These 3 observations are dropped.
+From the bar plot of `bsmt.exposure` it seems as if there is an unnamed level of the variable. Looking at median sale price by the type of basement exposure, we can see this is true. These 3 observations are dropped.
 
 ```{r bsmt exposure changes}
 df %>% group_by(bsmt.exposure) %>% summarise(median(saleprice))
@@ -640,7 +648,7 @@ The electrical variable identifies the electrical system in the sold home. 2677 
 
 We decided to change the names of the electrical categories to shorter abbreviations.
 
-```{r}
+```{r electrical1}
 table(df$electrical)
 # shorten to SB
 index <- which(df$electrical == "SBrkr")
@@ -659,9 +667,7 @@ index <- which(df$electrical == "Mix")
 df[index, 'electrical'] <- "M"
 #New category names
 table(df$electrical)
-
-
-# Figure out what is going on here *******
+# Replace these with "SB" (Mode Imputation)
 index <- which(df$electrical == "")
 df[index, 'electrical'] <- "SB"
 ```
@@ -673,15 +679,15 @@ Four variables deal with living area:
  - low.qual.fin.sf (Low quality finished square feet), Continuous
  - gr.live.area (Above Ground living area square feet), Continuous
 
-As advised in the documentation for the originial project, I have dropped all houses with an above ground living area greater than 4000 square feet, dropping a total of 5 variables. Three of them are true outliers (Partial Sales that likely don't represent actual market values) and two of them are simply unusual sales (very large houses priced relatively appropriately). 
+As advised in the documentation for the original project, we have dropped all houses with an above ground living area greater than 4000 square feet, dropping a total of 5 observatinons. Three of them are true outliers (Partial Sales that likely don't represent actual market values) and two of them are simply unusual sales (very large houses priced relatively appropriately). 
 
 ## First Floor Square Feet
 
 Continuous Variable, ranging from 334 to 3820, median = 1082, mean = 1155
 
-Ordered the df frame by above ground area, checked the head and tail to compare 1st floor square feet and above ground living area to make sure they align logically.
+Ordered the data by above ground area, checked the head and tail to compare 1st floor square feet and above ground living area to make sure they align logically.
 
-```{r}
+```{r ff sqft}
 summary(df$x1st.flr.sf)
 sort.area <- df[order(df$gr.liv.area),]
 head(subset(sort.area, select = c(x1st.flr.sf, gr.liv.area)))
@@ -692,30 +698,23 @@ tail(subset(sort.area, select = c(x1st.flr.sf, gr.liv.area)))
 
 Continuous variable, ranging from 0 to 1862, median = 0, mean = 333.8, indicating that at least 50% of homes sold in Ames, Iowa do not have second floors. I made a new variable called has.2nd.floor, which is a dummy variable where 0 = "no second floor" and 1 = "has second floor". 42.67% of homes sold in Ames have 2nd floors.
 
-Made a table containing neighborhoods and the ratio of houses sold that had a second floor in each neighbordhood
+Made a table containing neighborhoods and the ratio of houses sold that had a second floor in each neighborhood
 
 ```{r} 
 summary(df$x2nd.flr.sf)
 df$has.2nd.floor <- ifelse(df$x2nd.flr.sf > 0, 1, 0)
 summary(df$has.2nd.floor)
-
 #Percentage of houses that have 2 floors
 a <- df %>% filter(has.2nd.floor == 1)
 nrow(a) / nrow(df)
-
 #Checking neighborhood distribution of houses with 2 floors
 tall.houses <- df %>% group_by(neighborhood) %>% summarise(floors = mean(as.numeric(has.2nd.floor)))
 head(tall.houses)
-
 ```
 
 ## Low Quality Finish Square Feet
 
-Continuous variable, ranging from 0 to 1064, median = 0, mean = 4.685, no missing values
-
-98.63%(2885/2925) of homes have 0 square feet of low quality finish.
-
-OldTown (10), IDOTRR (7), and SWISU (6) have the most homes with low quality finish, though there are not that many (40) total. 
+Continuous variable, ranging from 0 to 1064, median = 0, mean = 4.685, no missing values98.63%(2885/2925) of homes have 0 square feet of low quality finish.OldTown (10), IDOTRR (7), and SWISU (6) have the most homes with low quality finish, though there are not that many (40) total. 
 
 ```{r}
 summary(df$low.qual.fin.sf)
@@ -729,7 +728,7 @@ wherelow
 
 Continuous Variable, ranging from 334 to 5642, same as 1st floor square feet, median = 1441, mean = 1494
 
-I arranged by above ground living area from lowest to high and checked the head and tail to make sure everything made sense. The smallest homes have low room counts and few other features whereas the biggest homes have high room counts and many features.
+We arranged by above ground living area from lowest to high and checked the head and tail to make sure everything made sense. The smallest homes have low room counts and few other features whereas the biggest homes have high room counts and many features.
 
 ```{r}
 summary(df$gr.liv.area)
@@ -750,10 +749,10 @@ The majority of homes do not have any half baths or basement full baths. Both bs
 ```{r}
 bath.missing <- df %>% filter(is.na(bsmt.half.bath) | is.na(bsmt.full.bath))
 bath.missing
-
+# Impute missing values
 df$bsmt.full.bath[which(is.na(df$bsmt.full.bath))] <- 0
 df$bsmt.half.bath[which(is.na(df$bsmt.half.bath))] <- 0
-
+# check counts
 table(df$bsmt.full.bath)
 table(df$bsmt.half.bath)
 table(df$full.bath)
@@ -763,9 +762,9 @@ table(df$half.bath)
 Decided to combine all bathroom variables (above ground and basement full baths and half baths) into one total bathroom variable, discrete, if we want to simplify our analysis regarding bathrooms. Note: we need to be wary of including all of these variables into our model as total.bath is a linear combination of other variables. It might be worth running a very simple housing regression model with this total.bath variable. 
 
 ```{r}
+# Calculate total bath variable
 mutate(df, total.bath = bsmt.full.bath + full.bath + (.5 * bsmt.half.bath) + (.5 * half.bath))
 summary(df$total.bath)
-
 ```
 
 ## Bedrooms
@@ -774,22 +773,18 @@ This discrete variable describes the number of bedrooms above ground level, rang
 
 There are 8 homes with 0 bedrooms above ground level, but those 8 have between 3-6 total above ground rooms. All but one have total.bsmt.sf near or greater than 1000 ft squared, indicating large basements, possibly with bedrooms. All but one also have no second floor. All have either one or two full baths in the basement and few other bathrooms. All have kitchens above ground. All have sale.type = WD and all but one sale.condition = Normal. Most have roughly equal total.bsmt.sf and gr.live.area.
 
-There is most likely collinearity between number of bedrooms and total number of rooms. A linear model of bedrooms on total rooms returns a p-value of essentially zero.
+There is most likely a strong correlation between number of bedrooms and total number of rooms.
 
 ```{r}
 table(df$bedroom.abvgr)
 bedless <- df %>% filter(bedroom.abvgr == 0) 
 bedless
-#Checking how many rooms are in each sale with 0 bedrooms
+#Checking how many rooms are in each sale with 0 bedrooms (ABOVE GROUND)
 bedless1 <- subset(bedless, select = c(totrms.abvgrd))
 bedless1
-
 #Comparing the basement area and above ground area of the homes with no above ground bedrooms
 area.compare <- subset(bedless, select = c(total.bsmt.sf, gr.liv.area))
 area.compare
-
-test_model <- lm(totrms.abvgrd ~ bedroom.abvgr, data = df)
-summary(test_model)
 ```
 
 ## Kitchen Variables
@@ -812,7 +807,6 @@ df[(df$kitchen.abvgr > 0) & is.na(df$kitchen.qual), ]
 ## Total Rooms Above Ground
 
 Discrete Variable ranging from 2 to 15, no missing values
-
 
 ```{r}
 table(df$totrms.abvgrd)
@@ -855,7 +849,7 @@ table(df$fireplace.qu)
 
 ## Garage Variables
 
-There are seven total variables related to the homes's garage:
+There are seven total variables related to the home's garage:
   - garage.type - garage location on the home, nominal variable, 
       - six garage levels
       - NA for no garage (157)
@@ -876,7 +870,6 @@ Testing to see if any garage types that are NA have an area > 0 or cars > 0 to s
 ```{r}
 df[(is.na(df$garage.type) & df$garage.area > 0) | (is.na(df$garage.type) & df$garage.cars > 0) , ]
 ```
-
 
 This table examines garage.type. Simplifying the factor names.
 ```{r}
@@ -899,7 +892,6 @@ df[index, 'garage.type'] <- "CP"
 # Shorten to I
 index <- which(df$garage.type == "Detchd")
 df[index, 'garage.type'] <- "D"
-
 #New factor names
 table(as.factor(df$garage.type))
 ```
@@ -908,7 +900,7 @@ table(as.factor(df$garage.type))
 summary(df$garage.yr.blt)
 ```
 
-As can be seen, garage year is missing 159 values and the maximum value is 2207, which is obviously an error as that year has yet to occur, unless of course they meant 2207 B.C. I filtered the data set to test for homes built later than 2010, which is the tail date of the data set. Only one observation has this error. As the home was built in 2006 and remodeled in 2007, we can assume that the garage was built in 2007 and an imput error occured.
+As can be seen, garage year is missing 158 values and the maximum value is 2207, which is obviously an error as that year has yet to occur, unless of course they meant 2207 B.C. I filtered the data set to test for homes built later than 2010, which is the tail date of the data set. Only one observation has this error. As the home was built in 2006 and remodeled in 2007, we can assume that the garage was built in 2007 and an input error occurred.
 
 ```{r}
 missing.garage.year <- df %>% filter(is.na(garage.yr.blt) & !is.na(garage.type))
@@ -957,6 +949,7 @@ df %>% filter(is.na(garage.finish) & !is.na(garage.type))
 df %>% filter(is.na(garage.qual) & !is.na(garage.type))
 df %>% filter(is.na(garage.cond) & !is.na(garage.type))
 ```
+
 This table examines garage quality. It has 158 missing values, when it should have 157. The code finds the observation that is missing garage quality but has a value for garage type, indicting that it is missing data and not "No Garage"
 
 ```{r}
@@ -968,13 +961,10 @@ Changing NA's in garage variables to None
 ```{r}
 index.garage.type <- which(is.na(df$garage.type))
 df[index.garage.type, 'garage.type'] <- 'None'
-
 index.garage.finish <- which(is.na(df$garage.finish))
 df[index.garage.finish, 'garage.finish'] <- 'None'
-
 index.garage.qual <- which(is.na(df$garage.qual))
 df[index.garage.qual, 'garage.qual'] <- 'None'
-
 index.garage.cond <- which(is.na(df$garage.cond))
 df[index.garage.cond, 'garage.cond'] <- 'None'
 ```
@@ -984,44 +974,60 @@ df[index.garage.cond, 'garage.cond'] <- 'None'
 Observation x=2237 is missing all garage data except for garage.type, indicting that there is a garage but no data on it. I have decided to remove it.
 
 ```{r}
-
+# Drop 1 observation
 index <- which(df$garage.cond == "")
 df <- df[-index,]
-
 ```
+
+## Fill in missing garage year built
+
+```{r}
+index <- which(is.na(df$garage.yr.blt))
+df[index, 'garage.yr.blt'] <- "0"
+# plot to see if it makes a difference to keep or not
+test <- df %>% filter(garage.yr.blt != "No garage")
+qplot(as.integer(test$garage.yr.blt), test$saleprice)
+# convert to number
+df$garage.yr.blt <- as.integer(df$garage.yr.blt)
+```
+
+A garage year built of 0 means there is no garage.
+
+```{r}
+# Are there any missing values in the data
+any(is.na(df))
+# How many are there
+sum(is.na(df))
+# return index of columns that have missing values 
+na.cols = which(colSums(is.na(df)) > 0)
+# Break down missing values by variable
+sort(colSums(sapply(df[na.cols], is.na)), decreasing = TRUE)
+```
+
 
 ## Exploratory Data Analysis
-
-```{r garage quality vs. garage condition}
-ggplot(df, aes(x = as.factor(garage.cond), y = as.factor(garage.qual))) + geom_jitter(alpha = 0.2)
-```
 
 ```{r}
 ggplot(df, aes(x = factor(totrms.abvgrd), y = saleprice, fill = factor(totrms.abvgrd))) + geom_boxplot() + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none")
 ```
 
-
 ```{r}
-library(graphics)
-
 df1 <- df %>% mutate(total.sf = total.bsmt.sf + x1st.flr.sf + x2nd.flr.sf) %>% filter(!is.na(total.sf)) %>% filter(saleprice < 650000) %>% filter(total.sf < 7500)
 
 df1$total.flr <- ifelse(df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf == 0, 1,
                 ifelse((df1$total.bsmt.sf == 0 & df1$x2nd.flr.sf > 0) |
                          (df1$total.bsmt.sf > 0 & df1$x2nd.flr.sf == 0), 2, 3))
 
-
-ggplot(df1, aes(x = total.sf, y = saleprice, color = as.factor(total.flr))) + geom_point()
+ggplot(df1, aes(x = total.sf, y = saleprice, color = as.factor(total.flr))) + geom_point(alpha = 0.3)
 ```
 
-
- --- Paul's Data Cleaning
 ## Cleaning paved.drive to saleprice:
-```{r paul section}
 
+```{r paul section}
+# start and end area
 start <- which(colnames(df) == 'paved.drive') 
 end <- which(colnames(df) == 'saleprice') 
-
+# paul section
 colnames_paul <- colnames(df[, start:end])
 colnames_paul
 ```
@@ -1053,7 +1059,7 @@ df[index, 'fence'] <- 'No Fence'
 
 ## Converting misc.feature value of NA to "No Feature"
 
-Misc Feature and Misc Val are connected fields.  It looks like misc.val should be non-zero when a non-NA value exists in Misc,feature and should be zero when misc.feature is NA.   
+Misc Feature and Misc Val are connected fields. It looks like misc.val should be non-zero when a non-NA value exists in Misc,feature and should be zero when misc.feature is NA.   
 
 The following code will 
   1) return all rows (if there are any) where the misc.val is greater than 0 and the misc.feature is missing and
@@ -1067,126 +1073,108 @@ head(df[(df$misc.val > 0), c('misc.feature','misc.val')])
 
 It appears that misc.value is > 0 for houses that have misc,features and zero for houses that have no misc.feature. 
 
-It's clear that the misc.feature value of NA indicates a condition where no misc feature exists.
+It's clear that the misc.feature value of NA indicates a condition where no misc feature exists. 
 
 ```{r checking misc.feature}
 index <- which(is.na(df$misc.feature))
 df[index, 'misc.feature'] <- 'No Feature'
+index <- which(df$misc.feature != "No Feature")
+df[index, 'misc.feature'] <- 'Feature'
 plotCategorical('misc.feature', df)
 ```
-Each of the misc.feature factors have an imputed value assigned by the evaluator which may be an attempt to indicate a contribution to the ultimate sale price.
+
+
 ```{r checking misc feature and misc value}
 ggplot(df, aes(x = factor(misc.feature), y = misc.val)) + geom_boxplot(aes(fill = factor(misc.feature))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
+# drop misc. value
+df <- df %>% dplyr::select(-misc.val)
 ```
 
 ## Sales Type
 
-Sale Type (Nominal): Cleaning up trailing spaces in code.
-		
-       WD 	Warranty Deed - Conventional
-       CWD	Warranty Deed - Cash
-       VWD	Warranty Deed - VA Loan
-       New	Home just constructed and sold
-       COD	Court Officer Deed/Estate
-       Con	Contract 15% Down payment regular terms
-       ConLw	Contract Low Down payment and low interest
-       ConLI	Contract Low Interest
-       ConLD	Contract Low Down
-       Oth	Other
-
-We are combining all Non New TYpes into one and exclude COD rows
-
-      WD, CWD, VWD Con, ConLw, ConLI, ConLD, Oth -> Existing
-      New -> New
-      COD -> drop observation   (see T Test results)
-      
-      Note that new will overlap with house.age.  We believe that the New attribute indicates no prior occupant regardless of the age of the house in much the same fashion as the treatment of new or used cars.  We have corrected the instance where age is 89 years and flagged as new
+For the sale type variable, we decided to trim the leading and trailing space of the categories. Then, after looking at the bar plot and boxplot of sale price by sale type, we combined the levels to warranty deeds, new sales (first owner), and all other sale types.  
 
 ```{r sales.type}
 # trim trailing blanks from sales.type
 trim.trailing <- function (x) sub("\\s+$", "", x)
 df$sale.type = sapply(df$sale.type,trim.trailing)
-
 #correcting New sales type for old house ... assume WD
 index.sale.type <- which(df$sale.type=="New" & df$house.age == 89)
 df[index.sale.type, "sale.type"] <- "WD"
-
+# looking at sale types
 table(df$sale.condition, df$sale.type)
+# bar plot
 plotCategorical('sale.type', df)
+# boxplot of saletype and sale price
 ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
-t.test(df$saleprice[df$sale.type=="WD"], df$saleprice[df$sale.type=="COD"])
-
-ggplot(subset(df, df$house.age < 6), aes(x = factor(sale.type))) + geom_bar() + facet_grid(~house.age) +
- theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=8))
-
-index <- which(df$sale.type == "WD" | df$sale.type == "CWD"| df$sale.type == "VWD"| df$sale.type == "Con"| df$sale.type ==  "ConLw" | df$sale.type ==  "ConLI"| df$sale.type == "ConLD" | df$sale.type == "Oth")
-
-df[index, 'sale.type'] <- 'Existing'
-
-index <- which(df$sale.type == "COD")
-df <- df[-index, ]
-
+# check boxplot of sale.type vs house age
+ggplot(df, aes(x = factor(sale.type), y = house.age)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none")
+# recode sale-type to be 3 different levels
+index <- str_which(df$sale.type, "WD")
+table(df[index, 'sale.type'])
+df[index, 'sale.type'] <- "Warranty Deed"
+# recode all non-WD and non-new to other
+index <- which(df$sale.type != "Warranty Deed" & df$sale.type != "New")
+df[index, 'sale.type'] <- "Other"
+# plot new boxplots
 ggplot(df, aes(x = factor(sale.type), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.type))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
-
 ```
+
 ## Sale Condition
 
-We recommend that for the purpose of forecasting a price:
-
-1. Include and classify as Normal
-
-       Normal	Normal Sale [No action]
-      
-       Partial	Home was not completed when last assessed (associated with New Homes)
-        [It should be noted that Sale TYpe of "New" overlaps with Sales Condition of "Partial".  All but 6 of the Partial are also New Sales Type. We therefore recommend that we recode "Partial" as "Normal" and rely on the Sales TYpe of "New"]
-
-       Alloca	Allocation - two linked properties with separate deeds, typically condo with a garage unit 
-        [It should be noted that we have 16 properties whose sales are clearly linked i.e, same sale month/year, same neighbood, same leading PID -- We believe that the purchase price has been allocated between the two entries and have therefore recoded these as Normal]
-        
-       AdjLand	Adjoining Land Purchase
-        [It should be noted that we have 9 properties whose sales are clearly linked i.e, same sale month/year,           same neighbood, same leading PID. -- We believe that the purchase price has been allocated between the two entries and have therefore recoded these as Normal]
-        
-2. Exclude uncertain terms and conditions.  The results of a T-test against purchase price indicate that a siginificant difference exists between the prices for sales with these conditions which warrants their removal from the price prediction dataset.
-
-       Abnorml	Abnormal Sale -  trade, foreclosure, short sale -> 188
-
-       Family	Sale between family members -> 46
-
 ```{r sale.condition}
+plotCategorical('sale.condition', df)
+# boxplot of sale price vs sale condition
+ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + 
+  geom_boxplot(aes(fill = factor(sale.condition))) + 
+  theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") + 
+  scale_y_continuous(labels = dollar)
+# Change partial sales to normal sales
 index <- which(df$sale.condition == "Partial")
 df[index, 'sale.condition'] <- 'Normal'
-index <- which(df$sale.condition == "Alloca")
-df[index, 'sale.condition'] <- 'Normal'
-index <- which(df$sale.condition == "AdjLand")
-df[index, 'sale.condition'] <- 'Normal'
-plotCategorical('sale.condition', df)
-ggplot(df, aes(x = factor(sale.condition), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.condition))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
-
-t.test(df$saleprice[df$sale.condition=="Normal"], df$saleprice[df$sale.condition=="Abnorml"])
-t.test(df$saleprice[df$sale.condition=="Normal"], df$saleprice[df$sale.condition=="Family"])
-
-index <- which(df$sale.condition == "Abnorml")
-df <- df[-index,] 
-index <- which(df$sale.condition == "Family")
-df <- df[-index,] 
-
-
+# we see a significant difference in median sale price
+temp <- df %>% group_by(sale.condition) %>% summarise(med_sale = median(saleprice))
+temp
+# Normal vs not normal
+index <- which(df$sale.condition != "Normal")
+df[index, 'sale.condition'] <- 'Not Normal'
 ```
-As a result the transformation, all Sales are now treasted as Normal
 
-## Creating a Saledate 
-
-We are creating a sale date as a combination of the mo.sold, a constant "01" [Note: There is no day.sold] and yr.sold to help with a potential time series analysis.
-
-```{r sale date creation}
-df$sale.date <- as.Date(paste(df$mo.sold,c("01"),df$yr.sold, sep = "/"), "%m/%d/%Y")
-ggplot(df, aes(x = factor(sale.date), y = saleprice)) + geom_boxplot(aes(fill = factor(sale.date))) + theme(axis.text.x = element_text(angle = 0, size = 10), legend.position = "none") +  scale_y_continuous(labels = dollar)
-```
+When modeling, we can filter as needed based on sale condition to just include normal sales. 
 
 # Write cleaned data to csv
 
-```{r write to csv}
-write_csv(df, "cleaned_housing.csv")
+```{r check for missing data}
+# obs and vars after cleaning
+endObs <- dim(df)[1]
+endVars <- dim(df)[2]
+# check to see if fixed all missing data
+any(is.na(df))
 ```
 
-I am waiting until all of our cleaning is done to uncomment this. 
+Our cleaned dataset has `r endObs` observations of `r endVars` variables. Overall, we dropped `r startObs-endObs` observations (`r round((startObs-endObs)/startObs * 100, 2)`%).
+
+## Train/Test Split
+```{r train test split}
+# Set seed
+set.seed(42)
+# Shuffle row indices: rows
+rows <- sample(nrow(df))
+# Randomly order data
+df <- df[rows, ]
+# Determine row to split on: split
+split <- round(nrow(df) * 0.70)
+# Create train
+train <- df[1:split, ]
+# Create test
+test <- df[(split + 1):nrow(df), ]
+```
+
+
+```{r write to csv}
+# cleaned housing file
+write_csv(df, "cleaned_housing.csv")
+write_csv(train, "train_housing.csv")
+write_csv(test, "test_housing.csv")
+```
+
