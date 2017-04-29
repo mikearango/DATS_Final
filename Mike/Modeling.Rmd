@@ -119,7 +119,7 @@ modelrf3 <- train(
   # fast random forest
   method = "ranger",
   # grid search for optimal number of columns to randomly sample at each split
-  tuneGrid = data.frame(mtry = seq(1, 15, 1)),
+  tuneGrid = data.frame(mtry = seq(1, 10, 1)),
   # preProcess
   preProcess = c("nzv", "center", "scale", "pca"),
   # set trainCrol as our custom object
@@ -146,9 +146,9 @@ modelrf4 <- train(
   # fast random forest
   method = "ranger",
   # grid search for optimal number of columns to randomly sample at each split
-  tuneGrid = data.frame(mtry = seq(2, 14, 1)),
+  tuneGrid = data.frame(mtry = seq(2, 12, 1)),
   # preProcess
-  preProcess = c("zv", "center", "scale", "pca"),
+  preProcess = c("zv", "center", "scale"),
   # set trainCrol as our custom object
   trControl = myControl
 )
@@ -160,7 +160,7 @@ print(min(modelrf4$results$RMSE))
 plot(modelrf4)
 ```
 
-Removing zero variance predictors as opposed to near-zero variance predictors before centering, scaling, and running PCA increased the RMSE slightly. 
+Removing zero variance predictors as opposed to near-zero variance predictors before centering, scaling, increased decreased the RMSE slightly. 
 
 ## Elastic Net Regularization
 
@@ -202,7 +202,7 @@ enet2 <- train(
   training,
   # set grid search parameters for alpha and lambda
   tuneGrid = expand.grid(alpha = 1, 
-                         lambda = (0:10) * 1000),
+                         lambda = (0:15) * 1000),
   # use glmnet method for lasso, ridge, and elastic net 
   method = "glmnet",
   # trainControl
@@ -216,7 +216,7 @@ plot(enet2)
 print(min(enet2$results$RMSE))
 ```
 
-Our grid search show that a lambda of 5000 minimizes the RMSE of our model. By finding the optimal lambda, we were able to decrease our RMSE again.  
+Our grid search show that a lambda of 7000 minimizes the RMSE of our model. By finding the optimal lambda, we were able to decrease our RMSE again.  
 
 ## Step-wise Linear Regression
 
@@ -246,36 +246,12 @@ plot(forward_model)
 print(min(forward_model$results$RMSE))
 ```
 
-As we can see from the code output, the forward selection model with no pre-processing does not turn out very well because of high levels of multicollinearity in the data. So, in the next forward selection model we pre-process heavily. 
+As we can see from the code output, the forward selection model with no pre-processing does not turn out very well because of high levels of multicollinearity in the data.
 
-```{r forward2}
-set.seed(442)
-# Train glmnet with custom trainControl and tuning: model
-forward_model2 <- train(
-  # formula
-  saleprice ~ ., 
-  # data
-  training,
-  # set grid search parameters for alpha and lambda
-  # use glmnet method for lasso, ridge, and elastic net 
-  method = "leapForward",
-  preProcess = c("zv", "center", "scale", "pca"),
-  # trainControl
-  trControl = myControl
-)
-# Print model to console
-print(forward_model2)
-# plot RMSE vs alpha
-plot(forward_model2)
-# Print minimum RMSE
-print(min(forward_model2$results$RMSE))
-```
-
-This drastically decreases the RMSE from the first forward selection model, but it is still high compared to our better models. 
 
 ### Mixed Steps
 
-We decided to run a mixed step-wise regression model with the same pre-processing techniques as the second forward selection model. 
+We also decided to run a mixed step-wise regression model. 
 
 ```{r mixed}
 set.seed(343)
@@ -288,7 +264,6 @@ mixed_model <- train(
   # set grid search parameters for alpha and lambda
   # use glmnet method for lasso, ridge, and elastic net 
   method = "leapSeq",
-  preProcess = c("zv", "center", "scale", "pca"),
   # trainControl
   trControl = myControl
 )
@@ -300,12 +275,63 @@ plot(mixed_model)
 print(min(mixed_model$results$RMSE))
 ```
 
+# Complex Models
+
+```{r knn}
+set.seed(579)
+# Train glmnet with custom trainControl and tuning: model
+knn1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  # set grid search parameters for alpha and lambda
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "kknn",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(knn1)
+# plot RMSE vs alpha
+plot(knn1)
+# Print minimum RMSE
+print(min(knn1$results$RMSE))
+```
+
+```{r glmboost}
+glmBoostGrid1 = expand.grid(mstop = seq(10, 150, 10),
+                           prune = c("no"))
+set.seed(1254)
+# Train glmnet with custom trainControl and tuning: model
+glmboost1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  training,
+  tuneGrid = glmBoostGrid1,
+  # set grid search parameters for alpha and lambda
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmboost",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(glmboost1)
+# plot RMSE vs alpha
+plot(glmboost1)
+# Print minimum RMSE
+print(min(glmboost1$results$RMSE))
+```
+
+
 # Model Evaluation
 
 ```{r}
 # Create model_list
 model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, rf4 = modelrf4, elastic1 = enet1, 
-                   elastic2 = enet2, forward1 = forward_model, forward2 = forward_model2, mixed = mixed_model)
+                   elastic2 = enet2, forward1 = forward_model, mixed = mixed_model, 
+                   knn = knn1, glmboost = glmboost1)
 # Pass model_list to resamples(): resamples
 resamples <- resamples(model_list)
 # Summarize the results
@@ -320,26 +346,41 @@ Based on the combination of lowest RMSE and highest $R^2$, it seems both elastic
 # Testing 
 
 ```{r test}
-p <- predict(modelrf1, test)
+p <- predict(modelrf1, test_x)
 error <- p - test$saleprice
-RMSE <- sqrt(mean(error^2))
-RMSE
+RMSE_rf1 <- sqrt(mean(error^2))
+RMSE_rf1
 
-p2 <- predict(modelrf2, test)
+p2 <- predict(modelrf2, test_x)
 error2 <- p2 - test$saleprice
-RMSE2 <- sqrt(mean(error2^2))
-RMSE2
+RMSE_rf2 <- sqrt(mean(error2^2))
+RMSE_rf2
 
-p3 <- predict(enet2, test)
+p3 <- predict(enet2, test_x)
 error3 <- p3 - test$saleprice
-RMSE3 <- sqrt(mean(error3^2))
-RMSE3
+RMSE3_lasso2 <- sqrt(mean(error3^2))
+RMSE3_lasso2
 
-p4 <- predict(enet1, test)
+p4 <- predict(enet1, test_x)
 error4 <- p4 - test$saleprice
-RMSE4 <- sqrt(mean(error4^2))
-RMSE4
+RMSE_lasso1 <- sqrt(mean(error4^2))
+RMSE_lasso1
+
+p5 <- predict(modelrf4, test_x)
+error5 <- p5 - test$saleprice
+RMSE_rf4 <- sqrt(mean(error5^2))
+RMSE_rf4
+
+p6 <- predict(glmboost1, test_x)
+error6 <- p6 - test$saleprice
+RMSE_glmboost <- sqrt(mean(error6^2))
+RMSE_glmboost
+
+p7 <- predict(knn1, test_x)
+error7 <- p7 - test$saleprice
+RMSE_knn <- sqrt(mean(error7^2))
+RMSE_knn
 ```
 
-The test RMSE for the first random forest model ends up being the best at `r RMSE`. 
+
 
