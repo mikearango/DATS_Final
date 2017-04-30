@@ -77,6 +77,24 @@ The cleaned dataset has 2838 observations of 82 variables. This means that we on
 
 # # Model Creation and Evaluation
 
+```{r}
+df <- read.csv("cleaned_housing.csv")
+
+train <- read.csv("train_housing.csv")
+test <- read.csv("test_housing.csv")
+
+test_y <- test[, "saleprice"]
+
+i <- sapply(df, is.factor)
+df[i] <- lapply(df[i], as.integer)
+
+i <- sapply(train, is.factor)
+train[i] <- lapply(train[i], as.integer)
+
+i <- sapply(test, is.factor)
+test[i] <- lapply(test[i], as.integer)
+```
+
 We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit. The first model we decide to create was a linear regression model containing all the predictors in the data set. 
 
 
