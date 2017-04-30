@@ -143,7 +143,84 @@ $(document).ready(function () {
 <h2>The Dataset</h2>
 <p>The dataset we chose for our project contains information from the Ames Assessor’s Office on residential property sales that occurred in Ames, Iowa from 2006 to 2010.<a href="*Journal%20of%20Statistics%20Education*,%20Volume%2019,%20Number%203(2011),%20accessed%20April%2011,%202017%20at%20www.amstat.org/publications/jse/v19n3/decock.pdf">3</a> The dataset was published in the <em>Journal of Statistics Education</em> for students and researchers alike to have an opportunity to practice predictive modeling on messy, real world data. The dataset contains 2930 observations of 80 variables and the unit of observation is a single property sale in Ames, Iowa in a given year.</p>
 <p>Of the 80 variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are continuous. The variables included are basic characteristics that anyone wanting to buy a house would be interested in. For the most part, the different variables may be split up into specific groups. In general, the 20 continuous variables relate to measurements of area dimensions for each observation. These include, among others, the sizes of lots, rooms, porches, and garages. The 14 discrete variables mostly have to do with the number of bedrooms, bathrooms, kitchens, etc. that a given property has. There are several geographic categorical variables that start profiling properties at the individual Parcel ID level and end at the neighborhood level. The rest of the nominal variables identify characteristics of the property and dwelling type/structure. Most of the ordinal variables are rankings of the quality/condition of rooms and lot characteristics. For more information on the variables in the dataset, consult the included <code>DataDescription.txt</code> file.</p>
-<p><strong>Continue talking about the data cleaning here</strong></p>
+<p>The dataset was fairly messy with regard to the number of missing values and the way levels of categorical variables were organized and coded. In order to tackle the large amount of cleaning required, we thought it was best to split the data into four equal parts—leaving about 20 variables for each team member to clean. So, we changed all variable names to lowercase as some were upper case to standardize them and divided the variables up accordingly.</p>
+<p>There were 13960 missing values in the dataset when we started to clean and analyze it. <em>Table 1</em> breaks down the number of missing values by variable. After analyzing the variables with missing data and consulting the aforementioned <code>DataDescription.txt</code> file, we noticed that most of the missing values were actually not missing. The documentation states the data curator coded certain variables as <code>NA</code> to specify that a house did not have that feature. For example, in the case of the <code>alley</code> variable, <code>NA</code> means there is <code>No Alley</code> access to the property. By recoding these variables, we were able to fix most of the missing values in categorical variables.</p>
+<table>
+<caption>Table 1: Number of Missing Values by Variable, Number Missing &gt; 75</caption>
+<thead>
+<tr class="header">
+<th>Variable Name</th>
+<th>Number of Missing Values</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>pool.qc</td>
+<td>2917</td>
+</tr>
+<tr class="even">
+<td>misc.feature</td>
+<td>2824</td>
+</tr>
+<tr class="odd">
+<td>alley</td>
+<td>2732</td>
+</tr>
+<tr class="even">
+<td>fence</td>
+<td>2358</td>
+</tr>
+<tr class="odd">
+<td>fireplace.qu</td>
+<td>1422</td>
+</tr>
+<tr class="even">
+<td>lot.frontage</td>
+<td>490</td>
+</tr>
+<tr class="odd">
+<td>garage.yr.blt</td>
+<td>159</td>
+</tr>
+<tr class="even">
+<td>garage.qual</td>
+<td>158</td>
+</tr>
+<tr class="odd">
+<td>garage.cond</td>
+<td>158</td>
+</tr>
+<tr class="even">
+<td>garage.type</td>
+<td>157</td>
+</tr>
+<tr class="odd">
+<td>garage.finish</td>
+<td>157</td>
+</tr>
+<tr class="even">
+<td>bsmt.qual</td>
+<td>79</td>
+</tr>
+<tr class="odd">
+<td>bsmt.cond</td>
+<td>79</td>
+</tr>
+<tr class="even">
+<td>bsmt.exposure</td>
+<td>79</td>
+</tr>
+<tr class="odd">
+<td>bsmtfin.type.1</td>
+<td>79</td>
+</tr>
+<tr class="even">
+<td>bsmtfin.type.2</td>
+<td>79</td>
+</tr>
+</tbody>
+</table>
+<p>lorem ipsum lorem ipsum</p>
 </div>
 </div>
 <div id="jack" class="section level1">
