@@ -78,31 +78,26 @@ The cleaned dataset has 2838 observations of 82 variables. This means that we on
 # # Model Creation and Evaluation
 
 ```{r}
-df <- read.csv("cleaned_housing.csv")
-
-train <- read.csv("train_housing.csv")
-test <- read.csv("test_housing.csv")
-
-test_y <- test[, "saleprice"]
+test_y <- df_test[, "saleprice"]
 
 i <- sapply(df, is.factor)
 df[i] <- lapply(df[i], as.integer)
 
-i <- sapply(train, is.factor)
-train[i] <- lapply(train[i], as.integer)
+i <- sapply(df_train, is.factor)
+df_train[i] <- lapply(df_train[i], as.integer)
 
 i <- sapply(test, is.factor)
-test[i] <- lapply(test[i], as.integer)
+df_test[i] <- lapply(df_test[i], as.integer)
 ```
 
 We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit. The first model we decide to create was a linear regression model containing all the predictors in the data set. 
 
 
 ```{r Kitchen Sink Model}
-all.model <- lm(saleprice ~ ., data = train)
+all.model <- lm(saleprice ~ ., data = df_train)
 summary(all.model)
 plot(all.model)
-pred.all <- predict(all.model, test)
+pred.all <- predict(all.model, df_test)
 RMSE.all <- sqrt(mean((pred.all - test_y)^2))
 RMSE.all
 ```
@@ -110,40 +105,31 @@ RMSE.all
 The RMSE of the full model is 30198.86. The summary shows several instances of perfect multicollinearity and many variables appear to be statistically insignicant. The plotting of the model shows several outliers that significantly affect the fitting of the model. All variables that are demostrate perfect multicollinearity or have a p-value > 0.2 are dropped to reduce dimensionality and include only significant variables. The reduced model is run the model again to see if this reduction with improve RMSE.    
 
 ```{r Model 2}
-model.2 <- lm(saleprice ~ ms.zoning + lot.area + street + land.contour + land.slope + neighborhood + condition.1 + condition.2 + bldg.type + house.style + overall.qual + overall.cond + year.built + roof.style + exterior.1st + exterior.2nd + mas.vnr.type + mas.vnr.area + exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.sf.1 + bsmtfin.sf.2 + bsmt.unf.sf + heating.qc + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath + bsmt.half.bath + full.bath + bedroom.abvgr + functional + fireplaces + fireplace.qu + garage.yr.blt + garage.cars + garage.area + wood.deck.sf + enclosed.porch + screen.porch + misc.feature + sale.type + sale.condition + ln.lot.frontage + ln.lot.area, data = train)
+model.2 <- lm(saleprice ~ ms.zoning + lot.area + street + land.contour + land.slope + neighborhood + condition.1 + condition.2 + bldg.type + house.style + overall.qual + overall.cond + year.built + roof.style + exterior.1st + exterior.2nd + mas.vnr.type + mas.vnr.area + exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.sf.1 + bsmtfin.sf.2 + bsmt.unf.sf + heating.qc + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath + bsmt.half.bath + full.bath + bedroom.abvgr + functional + fireplaces + fireplace.qu + garage.yr.blt + garage.cars + garage.area + wood.deck.sf + enclosed.porch + screen.porch + misc.feature + sale.type + sale.condition + ln.lot.frontage + ln.lot.area, data = df_train)
 summary(model.2)
 plot(model.2)
-pred.2 <- predict(model.2, test)
+pred.2 <- predict(model.2, df_test)
 RMSE.2 <- sqrt(mean((pred.2 - test_y)^2))
 RMSE.2
 ```
 
 The RMSE of reduced model is 30200.18, an increase from the full model, and perfect multicollinearity has been removed. There are still several outliers with high residuals, but the leverage of the outliers has reduced. The model is furthur simplified to see if this trend continues as simplifcation increases.  
 ```{r Model 3}
-model.3 <- lm(saleprice ~ overall.qual + neighborhood + bldg.type + bsmt.qual + total.bsmt.sf + gr.liv.area + full.bath + half.bath + totrms.abvgrd + kitchen.qual + garage.qual + garage.area + wood.deck.sf + screen.porch + misc.feature, data = train)
+model.3 <- lm(saleprice ~ overall.qual + neighborhood + bldg.type + bsmt.qual + total.bsmt.sf + gr.liv.area + full.bath + half.bath + totrms.abvgrd + kitchen.qual + garage.qual + garage.area + wood.deck.sf + screen.porch + misc.feature, data = df_train)
 summary(model.3)
 plot(model.3)
-pred.3 <- predict(model.3, test)
+pred.3 <- predict(model.3, df_test)
 RMSE.3 <- sqrt(mean((pred.3 - test_y)^2))
 RMSE.3
 ```
 
 ```{r Model Simple}
-model.4 <- lm(saleprice ~ overall.qual + total.bsmt.sf + gr.liv.area + totrms.abvgrd, data = train)
+model.4 <- lm(saleprice ~ overall.qual + total.bsmt.sf + gr.liv.area + totrms.abvgrd, data = df_train)
 summary(model.4)
 plot(model.4)
-pred.4 <- predict(model.4, test)
+pred.4 <- predict(model.4, df_test)
 RMSE.4 <- sqrt(mean((pred.4 - test_y)^2))
 RMSE.4
-```
-
-```{r Model Very Simple}
-model.5 <- lm(saleprice ~ overall.qual + gr.liv.area, data = train)
-summary(model.5)
-plot(model.5)
-pred.5 <- predict(model.5, test)
-RMSE.5 <- sqrt(mean((pred.5 - test_y)^2))
-RMSE.5
 ```
 
 With further simplication, the RMSE continues to increase, as does the leverage of the outliers. The residuals are larger on the ends of the sale price range, demonstrating the poor predictive nature of the linear regression model for the data set. A stepwise regression using backward elimination to run to find the model with the lowest AIC.   
@@ -151,7 +137,7 @@ With further simplication, the RMSE continues to increase, as does the leverage 
 ```{r Stepwise Backward}
 step.back.model <- step(all.model, direction = "backward")
 summary(step.back.model)
-pred.test.back <- predict(step.back.model, newdata = test)
+pred.test.back <- predict(step.back.model, newdata = df_test)
 RMSE.back <- sqrt(mean((pred.test.back - test_y)^2))
 RMSE.back
 ```
@@ -161,7 +147,7 @@ The stepwise backwards reduces the RMSE from the simplified models but is still 
 ```{r Stepwise Forward}
 step.forward.model <- step(all.model, direction = "forward")
 summary(step.forward.model)
-pred.test.forward <- predict(step.forward.model, newdata = test)
+pred.test.forward <- predict(step.forward.model, newdata = df_test)
 RMSE.forward <- sqrt(mean((pred.test.forward - test_y)^2))
 RMSE.forward
 ```
@@ -175,10 +161,10 @@ To explore other model creation options, a simple decision tree regression is ru
 ```{r Decision Tree}
 library(tree)
 
-tree_model <- tree(saleprice ~ ., data = train, method = "recursive.partition")
+tree_model <- tree(saleprice ~ ., data = df_train, method = "recursive.partition")
 plot(tree_model)
 text(tree_model, pretty = 0)
-tree_pred <- predict(tree_model, test)
+tree_pred <- predict(tree_model, df_test)
 RMSE.tree <- sqrt(mean((tree_pred - test_y)^2))
 RMSE.tree
 
