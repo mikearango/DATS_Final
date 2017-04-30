@@ -474,8 +474,8 @@ print(modelrf1)
 plot(modelrf1)
 ```
 
-Next, we decided to remove the zero variance predictors before running the next random forest regression to see if this results in a lower training RMSE. Since we removed zero variance predictors, the number of variables in the dataset decreased. Thus, we had to run a new grid search when we ran the second random forest model. 
-These modifications made the model slightly worse and increased the RMSE to $46327.18. 
+Next, we decided to remove the zero variance predictors before running the next random forest regression to see if this results in a lower training RMSE. Since we removed zero variance predictors, the number of variables in the dataset decreased. Thus, we had to run a new grid search when we ran the second random forest model. But, it's worth noting that the regression output shows no variables were actually removed after pre-processing.
+Regardless, these modifications made the model slightly worse and increased the RMSE to $46327.18. We hypothesize that this is because we ran a smaller grid search since we would expect a handful of variables to be zero variance predictors in a dataset this large.  
 
 ```{r rf2, echo = FALSE}
 set.seed(1760)
@@ -496,8 +496,30 @@ modelrf2 <- train(
 )
 ```
 
-*Finish the modeling writing here*
+In an effort to reduce the dimensionality of the dataset, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis (PCA) before feeding the data into the random forest model. 
 
+```{r rf3, eval = FALSE}
+set.seed(17)
+# train the model 
+modelrf3 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  train_mike,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(1, 10, 1)),
+  # preProcess
+  preProcess = c("nzv", "center", "scale", "pca"),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model summary
+print(modelrf3)
+```
 
+Surprisingly, this model had the highest training RMSE of the three models run to this point (\$`r print(min(modelrf3$results$RMSE)`). The regression output shows that 19 variables were removed because they were near-zero variance predictors and the remaining 62 were centered, scaled, and subject to a PCA. This model also explained the least amount of variation in sale price. 
 
+## Elastic Net Regularization 
 
