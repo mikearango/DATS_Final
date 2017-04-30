@@ -117,9 +117,9 @@ stargazer(df_predict.1, df_predict.2, df_predict.3, type="text")
 
 Comparing the 3 Models, we see the following RMSE Values when applying the model to the test dataset:
 
-  * Model 1 (1 Component): `r paste(round(saleprice_RMSE.1))`
-  * Model 2 (7 Component): `r paste(round(saleprice_RMSE.2))`
-  * Model 3 (24 Component): `r paste(round(saleprice_RMSE.3))`
+  * Model 1 (1 Component): $`r paste(round(saleprice_RMSE.1))`
+  * Model 2 (7 Component): $`r paste(round(saleprice_RMSE.2))`
+  * Model 3 (24 Component): $`r paste(round(saleprice_RMSE.3))`
 
 Model 2 appears to be the best, as Model 3 risks overfitting for not a much better fit.
 
