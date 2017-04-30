@@ -103,8 +103,8 @@ The R code is shown below along with the resultant list of variables and the adj
 ```{r pfb.building.ordered.list, warning=FALSE}
 df.Paul <- data.frame(Variable = character(ncol(train_h.Paul)), AdjRSquared = numeric(ncol(train_h.Paul)), stringsAsFactors = FALSE)
 for(i in 1:ncol(train_h.Paul)) {
-df.Paul$Variable[i]<- labels(train_h.Paul)[[2]][[i]]
-df.Paul$AdjRSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$adj.r.squared
+  df.Paul$Variable[i]<- labels(train_h.Paul)[[2]][[i]]
+  df.Paul$AdjRSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$adj.r.squared
 }
 head(df.Paul[order(df.Paul$AdjRSquared,decreasing=TRUE),],20)
 ```
@@ -205,7 +205,7 @@ model.Paul<-lm(saleprice~neighborhood +
     yrs.since.remod + 
     ln.lot.area
     , data = train_h.Paul )
-stargazer(model.Paul, type="text")
+stargazer(model.Paul, type="text", style="apsr")
 ```
 The evaluation of this model against the train data set is shown below
 ```{r pfb.testmodel1}
@@ -227,7 +227,7 @@ model.Paul2<-lm(saleprice~overall.qual +
     garage.area +  
     fireplace.qu +  
     yrs.since.remod     , data = train_h.Paul )
-stargazer(model.Paul2, type="text")
+stargazer(model.Paul2, type="text", style="apsr")
 ```
 The evaluation of this model against the train data set is shown below
 ```{r pfb.testmodel2}
