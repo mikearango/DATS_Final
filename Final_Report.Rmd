@@ -27,6 +27,12 @@ As a conceptual framework for our research, we adopted Peng and Matsui's epicycl
 
 ## The Dataset
 
+```{r loaddata, echo = FALSE}
+df <- read.csv("cleaned_housing.csv", header = TRUE)
+df_train <- read.csv("train_housing.csv", header = TRUE)
+df_test <- read.csv("test_housing.csv", header = TRUE)
+```
+
 The dataset we chose for our project contains information from the Ames Assessor’s Office on residential property sales that occurred in Ames, Iowa from 2006 to 2010.[3] The dataset was published in the *Journal of Statistics Education* for students and researchers alike to have an opportunity to practice predictive modeling on messy, real world data. The dataset contains 2930 observations of 80 variables and the unit of observation is a single property sale in Ames, Iowa in a given year.
 
 Of the 80 variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are continuous. The variables included are basic characteristics that anyone wanting to buy a house would be interested in. For the most part, the different variables may be split up into specific groups. In general, the 20 continuous variables relate to  measurements of area dimensions for each observation. These include, among others, the sizes of lots, rooms, porches, and garages. The 14 discrete variables mostly have to do with the number of bedrooms, bathrooms, kitchens, etc. that a given property has. There are several geographic categorical variables that start profiling properties at the individual Parcel ID level and end at the neighborhood level. The rest of the nominal variables identify characteristics of the property and dwelling type/structure. Most of the ordinal variables are rankings of the quality/condition of rooms and lot characteristics. For more information on the variables in the dataset, consult the included `DataDescription.txt` file.
@@ -58,34 +64,13 @@ Table: Table 1: Number of Missing Values by Variable, Number Missing > 75
 
 The solution to fill missing values for quantitative variables was just as simple. Most of the quantitative variables missing large numbers of values were `NA` because a given house feature was missing as well. For example, all missing values in the `garage.yr.blt` variable were because the house does not have a garage. The same reasoning for missing values applies to the square footage variables. For variables that were not missing a large number of variables we used mode (categorical) and median (quantitative) imputation to fill missing values.
 
-Once the variables were cleaned and all missing values were filled, we performed exploratory data analysis of the data. We noticed that the distribution of sale price was heavily skewed to the right. For this reason...
+Once the variables were cleaned and all missing values were filled, we performed exploratory data analysis of the data. We noticed that the distribution of sale price was heavily skewed to the right. This can be seen in the following graph. ![Histogram of Sale Price](HistSaleprice.png) These high-end outliers will make it very difficult to accurately predict as they are significantly going to drive up the root mean square error (RMSE) of our predictions. Keeping these observations would have disproportionately penalized the predictions of our model. To remedy this issue, we thought of two possible solutions: 1) drop the observations; or 2) linearly transform the saleprice variable by taking the natural logarithm. We ultimately decided to drop the top and bottom one percent of observations as our goal is to predict *typical* sales in Ames, Iowa. Taking the natural logarithm of the sale price would change the scale of our predictions to a logarithmic scale and would abstract the interpretability of model predictions. 
 
 
 [1]: http://www.stat.unc.edu/faculty/cji/fys/2012/Subprime%20mortgage%20crisis.pdf
 [2]: cite the *Art of Data Science Book* here
 [3]: *Journal of Statistics Education*, Volume 19, Number 3(2011), accessed April 11, 2017 at www.amstat.org/publications/jse/v19n3/decock.pdf
 
-## The Dataset
-
-```{r loaddata}
-
-df <- read.csv("cleaned_housing.csv", header=TRUE)
-df_train <- read.csv("train_housing.csv", header=TRUE)
-df_test <- read.csv("test_housing.csv", header=TRUE)
-
-```
-
-
-The dataset we chose for our project contains information from the Ames Assessor’s Office on residential property sales that occurred in Ames, Iowa from 2006 to 2010.[3] The dataset was published in the *Journal of Statistics Education* for students and researchers alike to have an opportunity to practice predictive modeling on messy, real world data. The dataset contains 2930 observations of 80 variables and the unit of observation is a single property sale in Ames, Iowa in a given year.
-
-Of the 80 variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are continuous. The variables included are basic characteristics that anyone wanting to buy a house would be interested in. For the most part, the different variables may be split up into specific groups. In general, the 20 continuous variables relate to  measurements of area dimensions for each observation. These include, among others, the sizes of lots, rooms, porches, and garages. The 14 discrete variables mostly have to do with the number of bedrooms, bathrooms, kitchens, etc. that a given property has. There are several geographic categorical variables that start profiling properties at the individual Parcel ID level and end at the neighborhood level. The rest of the nominal variables identify characteristics of the property and dwelling type/structure. Most of the ordinal variables are rankings of the quality/condition of rooms and lot characteristics. For more information on the variables in the dataset, consult the included `DataDescription.txt` file.
-
-**Continue talking about the data cleaning here**
-
-
-[1]: http://www.stat.unc.edu/faculty/cji/fys/2012/Subprime%20mortgage%20crisis.pdf
-[2]: cite the *Art of Data Science Book* here
-[3]: *Journal of Statistics Education*, Volume 19, Number 3(2011), accessed April 11, 2017 at www.amstat.org/publications/jse/v19n3/decock.pdf
 
 # Regression Model Approach 1 - Jack
 
