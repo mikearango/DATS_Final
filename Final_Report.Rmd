@@ -119,7 +119,7 @@ Comparing the 3 Models, we see the following RMSE Values:
   * Model 2 (7 Component): `r paste(round(saleprice_RMSE.2))`
   * Model 3 (24 Component): `r paste(round(saleprice_RMSE.3))`
 
-Model 2 appears to be the best, as Model 3 risks overfitting for not a not much better fit.
+Model 2 appears to be the best, as Model 3 risks overfitting for not a much better fit.
 
 
 # Random Forest Regression - Mike
