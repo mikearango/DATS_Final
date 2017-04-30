@@ -265,7 +265,7 @@ From the summary and the RSME plot, large jumps in the % of variance explained a
 
 The table below compares the predicted values to the actual values in the test dataset.
 
-```{r modelvaldiation, echo=FALSE, results="asis"}
+```{r modelvaldiation, echo=FALSE}
 
 pcr.predict.1 <- predict(pcr.saleprice, df_test, ncomp=1)
 df_predict.1 <- data.frame(pcr.predict.1, df_test$saleprice)
