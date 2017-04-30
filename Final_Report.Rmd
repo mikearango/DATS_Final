@@ -191,7 +191,7 @@ Lot Area is often a component of the property tax calculation and is often an in
 Sale Type have indicators of the nature of the sale.  We're particularly interested in including the embedded indicator of a New house sale that will arguably have a premium.
 
 ### Summary
-The final model  without the overall.qual is shown below.  
+The final models with and without the overall.qual is shown below.  
 ```{r pfb.model1}
 model.Paul<-lm(saleprice~neighborhood +  
     bsmt.qual +  
@@ -205,18 +205,7 @@ model.Paul<-lm(saleprice~neighborhood +
     yrs.since.remod + 
     ln.lot.area
     , data = train_h.Paul )
-stargazer(model.Paul, type="text", style="apsr")
-```
-The evaluation of this model against the train data set is shown below
-```{r pfb.testmodel1}
-p1.Paul <- predict(model.Paul, test_h.Paul)
-d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
-saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
-saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
-saleprice_RMSE.1
-```
-The final model  with the overall.qual is shown below.  
-```{r pfb.model2}
+
 model.Paul2<-lm(saleprice~overall.qual +
     neighborhood +  
     bsmt.qual +  
@@ -227,9 +216,19 @@ model.Paul2<-lm(saleprice~overall.qual +
     garage.area +  
     fireplace.qu +  
     yrs.since.remod     , data = train_h.Paul )
-stargazer(model.Paul2, type="text", style="apsr")
+
+stargazer(model.Paul, model.Paul2, type="text", style="apsr")
 ```
-The evaluation of this model against the train data set is shown below
+The evaluation of model (1) against the train data set is shown below
+```{r pfb.testmodel1}
+p1.Paul <- predict(model.Paul, test_h.Paul)
+d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
+saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
+saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
+saleprice_RMSE.1
+```
+
+The evaluation of model (2) against the train data set is shown below
 ```{r pfb.testmodel2}
 Paul2 <- predict(model.Paul2, test_h.Paul)
 dPaul.p2 <- data.frame(Paul2, test_h.Paul$saleprice)
