@@ -79,7 +79,7 @@ plot(modelrf1)
 print(min(modelrf1$results[['RMSE']]))
 ```
 
-We run a kitchen sink model (includes all independent variables) to start since random forest does its own feature selection. The optimal number of predictors at each split was 52. Next, we decided to remove the zero variance predictors before running the random forest regression. 
+We run a kitchen sink model (includes all independent variables) to start since random forest does its own feature selection. The optimal number of predictors at each split was 62. Next, we decided to remove the zero variance predictors before running the random forest regression. 
 
 ```{r rf2}
 set.seed(1760)

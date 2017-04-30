@@ -10,12 +10,20 @@ output:
     fontsize: 11
 ---
 
-```{r setup, include = FALSE}
+```{r setup, include = FALSE, message = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# packages needed for modeling
+# install.packages("e1071")
+# install.packages("ranger")
+# install.packages("png")
+# install.packages("grid")
 library(tidyverse)
 library(stargazer)
 library(pls)
 library(scales)
+library(caret)
+library(png)
+library(grid)
 ```
 
 # Intro
@@ -23,8 +31,6 @@ library(scales)
 The 2008 financial crisis affected the lives of everyone in the United States---some more than others---and there is an abundance of retrospective research that seeks to identify which sectors of the economy were hit hardest during this time and why. The first sector that comes to mind is housing as the financial crisis was "characterized by a rise in subprime mortgage delinquencies and foreclosures, and the resulting decline of securities" backed by these subprime mortgages.[1] For this reason, we decided to use our multifaceted data science toolbox to answer meaningful questions about the housing market. The goal of this project is ultimately to build a regression model to predict defined outcomes. So, while we will not be analyzing the housing market from an economic perspective like the majority of the literature, we can offer up a predictive model for academic purposes. 
 
 As a conceptual framework for our research, we adopted Peng and Matsui's epicycles of analysis to iteratively manage the steps of our data analysis.[2] After choosing the broad topic of the housing market, we narrowed the scope of our research. This included brainstorming as a team to figure out what specific question we wanted to answer about the housing market. We unanimously decided to predict the sale price of a residential house sale based on common characteristics that a property appraiser or assessor's office would use to assess property value. 
-
-**Maybe add small lit review section here**
 
 ## The Dataset
 
@@ -68,8 +74,6 @@ The solution to fill missing values for quantitative variables was just as simpl
 Once the variables were cleaned and all missing values were filled, we performed exploratory data analysis of the data. We noticed that the distribution of sale price was heavily skewed to the right. *Figure 1* illustrates this heavy skewness. These high-end outliers will make it very difficult to accurately predict as they are significantly going to drive up the root mean square error (RMSE) of our predictions. Keeping these observations would have disproportionately penalized the predictions of our model. 
 
 ```{r graph1, fig.cap = "Figure 1: Histogram of Sale Price Shows Many High-end Outliers", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
-library(png)
-library(grid)
 img <- readPNG("HistSaleprice.png")
 grid.raster(img)
 ```
@@ -86,7 +90,7 @@ The cleaned dataset has 2838 observations of 82 variables. This means that we on
 
 # # Model Creation and Evaluation
 
-We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit. The first model we decide to create was a linear regression model containing all the predictors in the data set. 
+We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit. The first model we decided to create was an ordinary least squares (OLS) model containing all the predictors in the data set. 
 
 
 ```{r Kitchen Sink Model}
@@ -404,9 +408,95 @@ Model 2 appears to be the best, as Model 3 risks overfitting for not a much bett
 
 # Random Forest Regression - Mike
 
+## Data Pre-processing
 
+```{r import and preprocess, include = FALSE}
+# read in train and test data
+train_mike <- df_train
+test_mike <- df_test
+# make a dataframe of all numeric features
+num_features = names(which(sapply(train_mike, is.numeric)))
+df.numeric = train_mike[num_features]
+# make a dataframe of all categorical features
+cat_features = names(which(sapply(train_mike, is.factor)))
+# convert all categorical features to numeric variables for modeling
+train_mike[cat_features] <- sapply(train_mike[cat_features], as.integer)
+test_mike[cat_features] <- sapply(test_mike[cat_features], as.integer)
+# split test into x and y
+test_x <- test_mike %>% dplyr::select(-saleprice)
+test_y <- test_mike %>% dplyr::select(saleprice)
+```
 
+Most complex machine learning models do better if we convert factors to integers when we run models, so we converted all categorical variables to integers. Then we created our own folds to be used in k-fold cross validation (with k = 5) so that we can compare the out-of-sample RMSE of our trained models on the *same* cross validation folds. This ensures we have an apples-to-apples comparison of our models. In addition to making our own folds, we created a custom `trainControl` object so we can specify to use these folds.
 
+```{r folds}
+# set seed for reproducibility
+set.seed(256)
+# create 5 folds to be used in cross validation
+myFolds <- createFolds(train_mike, k = 5)
+# create a custom trainControl object to use our folds; index = myFolds
+myControl = trainControl(verboseIter = FALSE, index = myFolds)
+```
+
+## Modeling
+
+This section deals with some slightly more complicated prediction models. We ran a few random forest regression models, followed by elastic net regularization, then some linear step-wise selection regression models, and finished off with some slightly more specialized models (k-NN regression and gradient boosting). 
+
+### Random Forest
+
+Random forests are aggregations of several decision tree models. A single decision tree is very fast but not too accurate. The earlier comparisons between the decision tree and a simple linear model illustrated this. While random forests take longer to run, they are very accurate and robust to overfitting. Random forests improve accuracy by fitting many trees to a bootstrap sample of the original dataset. This is a technique called *bootstrap aggregation* or *bagging*. In addition to making trees by bagging, "random forests change how the classification or regression trees are constructed. In standard trees, each node is split using the best split among all variables. In a random forest, each node is split using the best among a subset of predictors randomly chosen at that node."[4] 
+
+[4]:http://www.bios.unc.edu/~dzeng/BIOS740/randomforest.pdf 
+
+We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). The grid search showed the optimal number of predictors at each split (mtry) was 62. Using the optimal number of predictors, the model yields a training RMSE of \$`r print(min(modelrf1$results[['RMSE']]))`  
+
+```{r rf1}
+set.seed(12)
+# train the model 
+modelrf1 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  train_mike,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(2, 80, 2)),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model
+print(modelrf1)
+```
+
+```{r plot1, fig.cap = "Figure X: Training RMSE of Random Forest by Number of Predictors (mtry)", fig.align = 'center', echo = FALSE}
+# plot the number of randomly selected predictors
+plot(modelrf1)
+```
+
+Next, we decided to remove the zero variance predictors before running the next random forest regression to see if this results in a lower training RMSE. Since we removed zero variance predictors, the number of variables in the dataset decreased. Thus, we had to run a new grid search when we ran the second random forest model. 
+These modifications made the model slightly worse and increased the RMSE to $46327.18. 
+
+```{r rf2, echo = FALSE}
+set.seed(1760)
+# train the model 
+modelrf2 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  train_mike,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(2, 40, 2)),
+  # preprocess by removing sero variance predictors
+  preProcess = "zv",
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+```
+
+*Finish the modeling writing here*
 
 
 
