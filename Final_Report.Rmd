@@ -75,6 +75,105 @@ The cleaned dataset has 2838 observations of 82 variables. This means that we on
 
 # Regression Model Approach 1 - Jack
 
+# # Model Creation and Evaluation
+
+We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit. The first model we decide to create was a linear regression model containing all the predictors in the data set. 
+
+
+```{r Kitchen Sink Model}
+all.model <- lm(saleprice ~ ., data = train)
+summary(all.model)
+plot(all.model)
+pred.all <- predict(all.model, test)
+RMSE.all <- sqrt(mean((pred.all - test_y)^2))
+RMSE.all
+```
+
+The RMSE of the full model is 30198.86. The summary shows several instances of perfect multicollinearity and many variables appear to be statistically insignicant. The plotting of the model shows several outliers that significantly affect the fitting of the model. All variables that are demostrate perfect multicollinearity or have a p-value > 0.2 are dropped to reduce dimensionality and include only significant variables. The reduced model is run the model again to see if this reduction with improve RMSE.    
+
+```{r Model 2}
+model.2 <- lm(saleprice ~ ms.zoning + lot.area + street + land.contour + land.slope + neighborhood + condition.1 + condition.2 + bldg.type + house.style + overall.qual + overall.cond + year.built + roof.style + exterior.1st + exterior.2nd + mas.vnr.type + mas.vnr.area + exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.sf.1 + bsmtfin.sf.2 + bsmt.unf.sf + heating.qc + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath + bsmt.half.bath + full.bath + bedroom.abvgr + functional + fireplaces + fireplace.qu + garage.yr.blt + garage.cars + garage.area + wood.deck.sf + enclosed.porch + screen.porch + misc.feature + sale.type + sale.condition + ln.lot.frontage + ln.lot.area, data = train)
+summary(model.2)
+plot(model.2)
+pred.2 <- predict(model.2, test)
+RMSE.2 <- sqrt(mean((pred.2 - test_y)^2))
+RMSE.2
+```
+
+The RMSE of reduced model is 30200.18, an increase from the full model, and perfect multicollinearity has been removed. There are still several outliers with high residuals, but the leverage of the outliers has reduced. The model is furthur simplified to see if this trend continues as simplifcation increases.  
+```{r Model 3}
+model.3 <- lm(saleprice ~ overall.qual + neighborhood + bldg.type + bsmt.qual + total.bsmt.sf + gr.liv.area + full.bath + half.bath + totrms.abvgrd + kitchen.qual + garage.qual + garage.area + wood.deck.sf + screen.porch + misc.feature, data = train)
+summary(model.3)
+plot(model.3)
+pred.3 <- predict(model.3, test)
+RMSE.3 <- sqrt(mean((pred.3 - test_y)^2))
+RMSE.3
+```
+
+```{r Model Simple}
+model.4 <- lm(saleprice ~ overall.qual + total.bsmt.sf + gr.liv.area + totrms.abvgrd, data = train)
+summary(model.4)
+plot(model.4)
+pred.4 <- predict(model.4, test)
+RMSE.4 <- sqrt(mean((pred.4 - test_y)^2))
+RMSE.4
+```
+
+```{r Model Very Simple}
+model.5 <- lm(saleprice ~ overall.qual + gr.liv.area, data = train)
+summary(model.5)
+plot(model.5)
+pred.5 <- predict(model.5, test)
+RMSE.5 <- sqrt(mean((pred.5 - test_y)^2))
+RMSE.5
+```
+
+With further simplication, the RMSE continues to increase, as does the leverage of the outliers. The residuals are larger on the ends of the sale price range, demonstrating the poor predictive nature of the linear regression model for the data set. A stepwise regression using backward elimination to run to find the model with the lowest AIC.   
+
+```{r Stepwise Backward}
+step.back.model <- step(all.model, direction = "backward")
+summary(step.back.model)
+pred.test.back <- predict(step.back.model, newdata = test)
+RMSE.back <- sqrt(mean((pred.test.back - test_y)^2))
+RMSE.back
+```
+
+The stepwise backwards reduces the RMSE from the simplified models but is still producing worse results that the full model. A stepwise regression with forward selection is run to see if this process will create a better fitting model.  
+
+```{r Stepwise Forward}
+step.forward.model <- step(all.model, direction = "forward")
+summary(step.forward.model)
+pred.test.forward <- predict(step.forward.model, newdata = test)
+RMSE.forward <- sqrt(mean((pred.test.forward - test_y)^2))
+RMSE.forward
+```
+
+The forward selection model improves on the backwards elimination model and results the same RMSE as the full model.
+
+Multiple linear regression has been demonstrated to not be the best method for model creation for this data set. This is a result of assumptions that a linear regression makes about the dataa that this data set does not conform to. Linear regression first assumes a linear relationship between the explanatory variables and the response variable. The is no evidence of such a relationship with a large number of the predictors in this data set. Next, a linear regression assumes multivariate normality among the explanatory variables. The exploratory data analysis demonstrates clear non-normality from the majority of the predictors. A linear regression also assumes no or little multicollinearity between explanatory variables. This data set contains high levels of multicollinearity as seen in the full model analysis. Finally, a linear regression model assumes homoscedasticity. As can be clearly seen in the EDA, as each explanatory variable increases in value, the variance increases as well, almost uniformily across the data set, indicating clear heteroscedasticity.
+
+To explore other model creation options, a simple decision tree regression is run and cross-validated. 
+
+```{r Decision Tree}
+library(tree)
+
+tree_model <- tree(saleprice ~ ., data = train, method = "recursive.partition")
+plot(tree_model)
+text(tree_model, pretty = 0)
+tree_pred <- predict(tree_model, test)
+RMSE.tree <- sqrt(mean((tree_pred - test_y)^2))
+RMSE.tree
+
+cv_tree <- cv.tree(tree_model)
+plot(cv_tree$size, cv_tree$dev, type = "b", xlab = "Tree Size", ylab = "MSE")
+cv_tree$size[1]
+```
+
+Pruning is not necessary for the tree as cross-validation plot shows that the maximum number of leafs results in the lowest MSE.
+
+The decision tree model has poor predictive capabilities for this housing data. Analyzing the nodes shows that the decision tree only splits into ten leafs and predicts sales prices on very few variables. The decision tree model has an RMSE of 36946.74, higher than three of the linear models, the forward selection model, and the backwards elimination model. 
+
+
 # Regression Model Approach 2 - Paul
 ```{r pfb.intro, echo=FALSE, message=FALSE}
 train_h.Paul <- df_train
