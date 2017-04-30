@@ -107,7 +107,7 @@ plotCategorical = function(cols, dataframe) {
 We already saw that the `pid` variable does not have any missing values, but it might be interesting to see if any parcel appears twice. We would be able to see appreciation/depreciation over time if the same house was bought and sold within a 5 year window. 
 
 ```{r pid}
-summarise(df,
+dplyr::summarise(df,
           n_obs = n(),
           n_pid = n_distinct(pid))
 ```
@@ -152,7 +152,7 @@ Even though there are a few properties on here that are listed as agricultural, 
 ```{r zoning median sale}
 df %>% 
   group_by(ms.zoning) %>% 
-  summarise(n = n(),
+  dplyr::summarise(n = n(),
             median_year_built = median(year.built),
             median_sale_price = median(saleprice)) %>% 
   arrange(desc(median_sale_price))
@@ -269,7 +269,7 @@ There seems to be some very high end outliers influencing the scatter plot of sa
 plotCategorical('street', df)
 df %>% 
   group_by(street) %>% 
-  summarise(median_sale_price = median(saleprice), 
+  dplyr::summarise(median_sale_price = median(saleprice), 
             n = n())
 ```
 
@@ -291,7 +291,7 @@ plotCategorical('lot.shape', df)
 # median sale price by lot shape
 df %>% 
   group_by(lot.shape) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 # Combine IR2 and IR3 into one level 
 index <- which(df$lot.shape == "IR2" | df$lot.shape == "IR3")
@@ -299,7 +299,7 @@ df[index, 'lot.shape'] <- "Mod+ IR"
 # New median sale price by lot shape
 df %>% 
   group_by(lot.shape) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 ```
 
@@ -309,7 +309,7 @@ df %>%
 plotCategorical('land.contour', df)
 df %>% 
   group_by(land.contour) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 ```
 
@@ -319,7 +319,7 @@ df %>%
 plotCategorical('utilities', df)
 df %>% 
   group_by(utilities) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 # find the 3 non-allpub utility houses
 index <- which(df$utilities != "AllPub")
@@ -340,7 +340,7 @@ plotCategorical("lot.config", df)
 # look at median sale price by lot configuration
 df %>% 
   group_by(lot.config) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 ```
 
@@ -351,7 +351,7 @@ plotCategorical("land.slope", df)
 # median sale price by slope 
 df %>% 
   group_by(land.slope) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 # combine moderate and severe land slope into 1 level 
 index <- which(df$land.slope != "Gtl")
@@ -361,7 +361,7 @@ plotCategorical("land.slope", df)
 # new table
 df %>% 
   group_by(land.slope) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 ```
 
@@ -392,7 +392,7 @@ plotCategorical('condition.1', df)
 # median sale price by condition 1
 df %>% 
   group_by(condition.1) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 ```
 
@@ -402,7 +402,7 @@ df %>%
 plotCategorical('condition.2', df)
 df %>% 
   group_by(condition.2) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 # No case where first condition is norm and second isn't
 any(df$condition.1 == "Norm" & df$condition.2 != "Norm")
@@ -414,7 +414,7 @@ any(df$condition.1 == "Norm" & df$condition.2 != "Norm")
 plotCategorical('bldg.type', df)
 df %>% 
   group_by(bldg.type) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 ```
 
@@ -424,7 +424,7 @@ df %>%
 plotCategorical('house.style', df)
 df %>% 
   group_by(house.style) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 ```
 
@@ -440,7 +440,7 @@ df <- df %>% dplyr::select(everything(), -ms.subclass)
 # df to store median sale price of overall qual
 tbl <- df %>% 
   group_by(overall.qual) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 # 
 ggplot(tbl, aes(x = factor(overall.qual), y = median_saleprice)) + 
@@ -476,7 +476,7 @@ ggplot(df, aes(x = factor(overall.cond), y = saleprice)) +
 # df to see median sale price for overall condition
 tbl <- df %>% 
   group_by(overall.cond) %>% 
-  summarise(n = n(), 
+  dplyr::summarise(n = n(), 
             median_saleprice = median(saleprice))
 # plot house condition and median sale price
 ggplot(tbl, aes(x = factor(overall.cond), y = median_saleprice)) + 
@@ -720,7 +720,7 @@ Continuous variable, ranging from 0 to 1064, median = 0, mean = 4.685, no missin
 summary(df$low.qual.fin.sf)
 no.low.qual <- df %>% filter(low.qual.fin.sf == 0)
 nrow(no.low.qual) / nrow(df)
-wherelow <- df %>% group_by(neighborhood) %>% filter(low.qual.fin.sf > 0) %>% summarise(n = n())
+wherelow <- df %>% group_by(neighborhood) %>% filter(low.qual.fin.sf > 0) %>% dplyr::summarise(n = n())
 wherelow
 ```
 
@@ -1146,17 +1146,19 @@ When modeling, we can filter as needed based on sale condition to just include n
 
 ```{r dropoutliers}
 init <- dim(df)[1]
-
-histogram(df$saleprice)
+# histogram of sale price
+ggplot(df, aes(x = saleprice)) + 
+  geom_histogram(fill = "#81AC9B", col = "black", bins = 55) + 
+  scale_x_continuous(name = "Sale Price", labels = dollar, limits = c(0, 800000)) + 
+  ggsave(filename = "HistSaleprice.png")
+# remove outliers
 outlierMinMax <- quantile(df$saleprice, c(.01, .99))
 df <- df[ df$saleprice > outlierMinMax[1] & df$saleprice < outlierMinMax[2],  ]
-
+# end number of obs
 end <- dim(df)[1]
 ```
 
 `r init - end` observations were dropped.
-
-``
 
 # Write cleaned data to csv
 
