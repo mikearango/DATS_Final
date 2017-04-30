@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(stargazer)
 library(pls)
+library(scales)
 ```
 
 # Intro
@@ -76,11 +77,8 @@ Once the variables were cleaned and all missing values were filled, we performed
 
 # Regression Model Approach 2 - Paul
 ```{r pfb.intro, echo=FALSE, message=FALSE}
-library(readr)
-library(ggplot2)
-library(scales)
-train_h.Paul <- read_csv("~/GitHub/DATS_Final/train_housing.csv")
-test_h.Paul <- read_csv("~/GitHub/DATS_Final/train_housing.csv")
+train_h.Paul <- df_train
+test_h.Paul <- df_test
 ```
 ## Real Estate Based-Model
 The dataset presents challenges for the exercise of establishing a projected sale price. The large number and wide variety of attributes associated with the sale of a house complicate the process of establishing an understandable model.  After cleaning 83 attributes are associated with each sale.  Multiple attributes are used to characterize the same basic feature.  Many factors are characterized by multiple levels with distinctions that are complicated to value.  My approach was to use conventional Real Estate guidance as a guide for the selection of attributes to build a conventional regression model.  The purpose is to establish a model whose results can be communicated to a home seller and buyer. Communication of the factors that contributed to the model was a key goal.
@@ -90,8 +88,8 @@ The R code is shown below along with the resultant list of variables and the adj
 ```{r pfb.building.ordered.list, warning=FALSE}
 df.Paul <- data.frame(Variable = character(ncol(train_h.Paul)), AdjRSquared = numeric(ncol(train_h.Paul)), stringsAsFactors = FALSE)
 for(i in 1:ncol(train_h.Paul)) {
-df.Paul$Variable[i]<- labels(train_h.Paul)[[2]][[i]]
-df.Paul$AdjRSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$adj.r.squared
+  df.Paul$Variable[i]<- labels(train_h.Paul)[[2]][[i]]
+  df.Paul$AdjRSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$adj.r.squared
 }
 head(df.Paul[order(df.Paul$AdjRSquared,decreasing=TRUE),],20)
 ```
@@ -178,7 +176,7 @@ Lot Area is often a component of the property tax calculation and is often an in
 Sale Type have indicators of the nature of the sale.  We're particularly interested in including the embedded indicator of a New house sale that will arguably have a premium.
 
 ### Summary
-The final model  without the overall.qual is shown below.  
+The final models with and without the overall.qual is shown below.  
 ```{r pfb.model1}
 model.Paul<-lm(saleprice~neighborhood +  
     bsmt.qual +  
@@ -192,18 +190,7 @@ model.Paul<-lm(saleprice~neighborhood +
     yrs.since.remod + 
     ln.lot.area
     , data = train_h.Paul )
-summary(model.Paul)
-```
-The evaluation of this model against the train data set is shown below
-```{r pfb.testmodel1}
-p1.Paul <- predict(model.Paul, test_h.Paul)
-d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
-saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
-saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
-saleprice_RMSE.1
-```
-The final model  with the overall.qual is shown below.  
-```{r pfb.model2}
+
 model.Paul2<-lm(saleprice~overall.qual +
     neighborhood +  
     bsmt.qual +  
@@ -214,9 +201,19 @@ model.Paul2<-lm(saleprice~overall.qual +
     garage.area +  
     fireplace.qu +  
     yrs.since.remod     , data = train_h.Paul )
-summary(model.Paul2)
+
+stargazer(model.Paul, model.Paul2, type="text", style="apsr")
 ```
-The evaluation of this model against the train data set is shown below
+The evaluation of model (1) against the train data set is shown below
+```{r pfb.testmodel1}
+p1.Paul <- predict(model.Paul, test_h.Paul)
+d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
+saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
+saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
+saleprice_RMSE.1
+```
+
+The evaluation of model (2) against the train data set is shown below
 ```{r pfb.testmodel2}
 Paul2 <- predict(model.Paul2, test_h.Paul)
 dPaul.p2 <- data.frame(Paul2, test_h.Paul$saleprice)
@@ -224,9 +221,12 @@ saleprice_MSE.1 <- mean((dPaul.p2[,1]-dPaul.p2[,2])^2, na.rm=TRUE)
 saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
 saleprice_RMSE.1
 ```
+
+
+
 # Principle Component Regression (PCR) - Yesh
 
-The second best model for predicting `saleprice`, as defined by the RMSE value on the test data set was the PCR model with 7 components. PCR is an application of Principle Component Analysis (PCA) to regression modeling. By creating "components," which are linear transformations of the variables in our dataset, multicollinearity can be minimized by using these components in the regression model, rather than the original variables. This can create a better prediction model, with lower risk of overfitting, than a traditional regression model. However, the ability to interpret the coefficients of the model is lost because each component variable is a linear combination of all the variables in the original dataset.
+PCR is an application of Principle Component Analysis (PCA) to regression modeling. By creating "components," which are linear transformations of the variables in our dataset, multicollinearity can be minimized by using these components in the regression model, rather than the original variables. This can create a better prediction model, with lower risk of overfitting, than a traditional regression model. However, the ability to interpret the coefficients of the model is lost because each component variable is a linear combination of all the variables in the original dataset.
 
 
 ## Model Generation
