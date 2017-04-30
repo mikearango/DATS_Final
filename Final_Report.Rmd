@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(stargazer)
 library(pls)
+library(scales)
 ```
 
 # Intro
@@ -51,11 +52,8 @@ Of the 80 variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are
 
 # Regression Model Approach 2 - Paul
 ```{r pfb.intro, echo=FALSE, message=FALSE}
-library(readr)
-library(ggplot2)
-library(scales)
-train_h.Paul <- read_csv("~/GitHub/DATS_Final/train_housing.csv")
-test_h.Paul <- read_csv("~/GitHub/DATS_Final/train_housing.csv")
+train_h.Paul <- df_train
+test_h.Paul <- df_test
 ```
 ## Real Estate Based-Model
 The dataset presents challenges for the exercise of establishing a projected sale price. The large number and wide variety of attributes associated with the sale of a house complicate the process of establishing an understandable model.  After cleaning 83 attributes are associated with each sale.  Multiple attributes are used to characterize the same basic feature.  Many factors are characterized by multiple levels with distinctions that are complicated to value.  My approach was to use conventional Real Estate guidance as a guide for the selection of attributes to build a conventional regression model.  The purpose is to establish a model whose results can be communicated to a home seller and buyer. Communication of the factors that contributed to the model was a key goal.
@@ -167,7 +165,7 @@ model.Paul<-lm(saleprice~neighborhood +
     yrs.since.remod + 
     ln.lot.area
     , data = train_h.Paul )
-summary(model.Paul)
+stargazer(model.Paul, type="text")
 ```
 The evaluation of this model against the train data set is shown below
 ```{r pfb.testmodel1}
@@ -189,7 +187,7 @@ model.Paul2<-lm(saleprice~overall.qual +
     garage.area +  
     fireplace.qu +  
     yrs.since.remod     , data = train_h.Paul )
-summary(model.Paul2)
+stargazer(model.Paul2, type="text")
 ```
 The evaluation of this model against the train data set is shown below
 ```{r pfb.testmodel2}
@@ -199,9 +197,12 @@ saleprice_MSE.1 <- mean((dPaul.p2[,1]-dPaul.p2[,2])^2, na.rm=TRUE)
 saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
 saleprice_RMSE.1
 ```
+
+
+
 # Principle Component Regression (PCR) - Yesh
 
-The second best model for predicting `saleprice`, as defined by the RMSE value on the test data set was the PCR model with 7 components. PCR is an application of Principle Component Analysis (PCA) to regression modeling. By creating "components," which are linear transformations of the variables in our dataset, multicollinearity can be minimized by using these components in the regression model, rather than the original variables. This can create a better prediction model, with lower risk of overfitting, than a traditional regression model. However, the ability to interpret the coefficients of the model is lost because each component variable is a linear combination of all the variables in the original dataset.
+PCR is an application of Principle Component Analysis (PCA) to regression modeling. By creating "components," which are linear transformations of the variables in our dataset, multicollinearity can be minimized by using these components in the regression model, rather than the original variables. This can create a better prediction model, with lower risk of overfitting, than a traditional regression model. However, the ability to interpret the coefficients of the model is lost because each component variable is a linear combination of all the variables in the original dataset.
 
 
 ## Model Generation

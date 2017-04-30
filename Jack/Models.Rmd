@@ -10,11 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-setwd("C:/Users/JackCrum/Documents/GitHub/DATS_Final/DATS_Final")
-df <- read.csv("cleaned_housing.csv")
+# setwd("C:/Users/JackCrum/Documents/GitHub/DATS_Final/DATS_Final")
+df <- read.csv("../cleaned_housing.csv")
 
-train <- read.csv("train_housing.csv")
-test <- read.csv("test_housing.csv")
+train <- read.csv("../train_housing.csv")
+test <- read.csv("../test_housing.csv")
 
 test_y <- test[, "saleprice"]
 
