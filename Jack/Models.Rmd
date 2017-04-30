@@ -16,6 +16,8 @@ df <- read.csv("cleaned_housing.csv")
 train <- read.csv("train_housing.csv")
 test <- read.csv("test_housing.csv")
 
+test_y <- test[, "saleprice"]
+
 i <- sapply(df, is.factor)
 df[i] <- lapply(df[i], as.integer)
 
@@ -24,11 +26,7 @@ train[i] <- lapply(train[i], as.integer)
 
 i <- sapply(test, is.factor)
 test[i] <- lapply(test[i], as.integer)
-
-glimpse(df)
 ```
-
-
 
 ```{r}
 df$garage.yr.blt <- as.character(df$garage.yr.blt)
@@ -42,154 +40,94 @@ any(is.na(df))
 sum(is.na(df))
 ```
 
-```{r}
-summary(df)
-myvars <- names(df) %in% c("sale.condition") 
-df <- df[!myvars]
-```
-
-
-```{r}
+```{r Kitchen Sink Model}
 all.model <- lm(saleprice ~ ., data = train)
 summary(all.model)
 
-single.var.model <- lm(saleprice ~ lot.frontage + street + lot.config + land.slope + bldg.type + house.style + condition.2 + overall.qual + year.built + roof.matl + exterior.1st + masn.vnr.type + masn.vnr.area + exter.qual + bsmt.qual + heating.qc +)
-
-```
-
-```{r}
-#install.packages("Metrics")
-library(Metrics)
-pred.test <- predict(all.model, newdata = test)
-rmse(test, pred.test)
-```
-
-```{r}
-step(all.model, direction = "backward")
-step.back.model <- lm(formula = saleprice ~ ms.zoning + lot.frontage + lot.area + 
-    street + land.contour + lot.config + land.slope + condition.2 + 
-    bldg.type + house.style + overall.qual + overall.cond + year.built + 
-    roof.matl + exterior.1st + mas.vnr.type + mas.vnr.area + 
-    exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.sf.1 + bsmtfin.sf.2 + 
-    heating.qc + x1st.flr.sf + x2nd.flr.sf + low.qual.fin.sf + 
-    bsmt.full.bath + bedroom.abvgr + kitchen.abvgr + kitchen.qual + 
-    totrms.abvgrd + functional + fireplaces + fireplace.qu + 
-    garage.type + garage.yr.blt + garage.cars + garage.qual + 
-    paved.drive + wood.deck.sf + screen.porch + pool.area + yr.sold + 
-    sale.type + sale.condition + ln.lot.frontage + ln.lot.area + 
-    has.2nd.floor, data = train)
-
-summary(step.back.model)
-pred.test.back <- predict(step.back.model, newdata = test)
-rmse(test, pred.test.back)
-```
-
-```{r}
-makes.sense.model <- lm(saleprice ~ lot.area + neighborhood + bldg.type + house.style + overall.qual + overall.cond + year.remod.add + kitchen.qual + totrms.abvgrd + fireplaces + garage.type + garage.area + wood.deck.sf + pool.area + misc.feature + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath + bsmt.half.bath + full.bath + half.bath, data = train)
-
-summary(makes.sense.model)
-pred.makes.sense <- predict(makes.sense.model, newdata = test)
-rmse(test, pred.makes.sense)
-```
-
-```{r}
-#install.packages("Metrics")
-library(Metrics)
-sign.model <- lm(saleprice ~ lot.area + neighborhood + bldg.type + overall.qual + totrms.abvgrd + gr.liv.area + full.bath + bsmt.full.bath + pool.area + garage.cars, data = train)
-
-summary(sign.model)
-pred.sign <- predict(sign.model, newdata = test)
-rmse(test, pred.sign)
-```
-
-
-```{r}
-step(all.model, direction = "forward")
-summary(lm(formula = saleprice ~ lot.frontage + street + lot.shape + 
-    land.contour + lot.config + land.slope + neighborhood + condition.1 + 
-    condition.2 + bldg.type + overall.qual + overall.cond + year.built + 
-    year.remod.add + exterior.1st + mas.vnr.type + mas.vnr.area + 
-    exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.type.1 + 
-    bsmtfin.sf.1 + bsmtfin.type.2 + bsmtfin.sf.2 + bsmt.unf.sf + 
-    x1st.flr.sf + x2nd.flr.sf + low.qual.fin.sf + bsmt.full.bath + 
-    full.bath + bedroom.abvgr + kitchen.abvgr + kitchen.qual + 
-    totrms.abvgrd + functional + fireplaces + fireplace.qu + 
-    garage.finish + garage.cars + garage.qual + garage.cond + 
-    wood.deck.sf + screen.porch + pool.area + pool.qc + misc.feature + 
-    sale.type + ln.lot.frontage + ln.lot.area + has.2nd.floor, 
-    data = df))
-```
-
-```{r}
-df.numeric <- df[ , sapply(df, is.numeric)]
-numeric.model <- lm(saleprice ~ ., data = df.numeric)
-summary(numeric.model)
-```
-
-
-```{r}
-summary(lm(saleprice ~ ln.lot.area + ln.lot.frontage + screen.porch + misc.val + pool.area + enclosed.porch + wood.deck.sf + garage.area + totrms.abvgrd + kitchen.abvgr + overall.qual + overall.cond + year.built + year.remod.add + mas.vnr.area + bsmtfin.sf.1 + bsmtfin.sf.2 + bsmt.unf.sf + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath, data = df.numeric))
-```
-
-
-
-
-```{r}
-#install.packages("party")
-library(party)
-tree.all <- ctree(saleprice ~ ., data = train)
-plot(tree.all)
-pred.all <- predict(tree.all, test)
-RMSE.all <- sqrt(mean((pred.all - test$saleprice)^2))
+pred.all <- predict(all.model, test)
+RMSE.all <- sqrt(mean((pred.all - test_y)^2))
 RMSE.all
 ```
 
-```{r}
-library(caret)
-set.seed(42)
-rf.model <- train(saleprice ~ ., df, method = "rf", trControl = trainControl(method = "cv", number = 4, verboseIter = TRUE))
-rf.model
+```{r Model 2}
+model.2 <- lm(saleprice ~ ms.zoning + lot.area + street + land.contour + land.slope + neighborhood + condition.1 + condition.2 + bldg.type + house.style + overall.qual + overall.cond + year.built + roof.style + exterior.1st + exterior.2nd + mas.vnr.type + mas.vnr.area + exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.sf.1 + bsmtfin.sf.2 + bsmt.unf.sf + heating.qc + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath + bsmt.half.bath + full.bath + bedroom.abvgr + functional + fireplaces + fireplace.qu + garage.yr.blt + garage.cars + garage.area + wood.deck.sf + enclosed.porch + screen.porch + misc.feature + sale.type + sale.condition + ln.lot.frontage + ln.lot.area, data = train)
+summary(model.2)
+
+pred.2 <- predict(model.2, test)
+RMSE.2 <- sqrt(mean((pred.2 - test_y)^2))
+RMSE.2
 ```
 
+```{r Model 3}
+model.3 <- lm(saleprice ~ overall.qual + neighborhood + bldg.type + bsmt.qual + total.bsmt.sf + gr.liv.area + full.bath + half.bath + totrms.abvgrd + kitchen.qual + garage.qual + wood.deck.sf + screen.porch + misc.feature, data = train)
 
-```{r}
-model.rf.2 <- train(saleprice ~ ., data = df, method = "ranger")
-plot(model.rf.2)
+pred.3 <- predict(model.3, test)
+RMSE.3 <- sqrt(mean((pred.3 - test_y)^2))
+RMSE.3
 ```
 
-```{r}
-model.rf.3 <- train(
-  saleprice ~ .,
-  tuneLength = 10,
-  data = df, method = "ranger",
-  trControl = trainControl(method = "cv", number = 4, verboseIter = TRUE)
-)
-plot(model.rf.3)
-
-#19 mtry gives the most accurary, lowest RMSE
+```{r Model Simple}
+model.4 <- lm(saleprice ~ overall.qual + total.bsmt.sf + gr.liv.area + full.bath + totrms.abvgrd, data = train)
+pred.4 <- predict(model.4, test)
+RMSE.4 <- sqrt(mean((pred.4 - test_y)^2))
+RMSE.4
 ```
 
-```{r}
-model.rf.4 <- train(saleprice ~ ., tuneGrid = data.frame(mtry = c(10, 15, 16, 17, 18, 19, 20, 21, 22, 23, 30)), data = df, method = "ranger", trControl = trainControl(method = "cv", number = 4, verboseIter = TRUE))
-
-plot(model.rf.4)
-
-#17 mtry gives the least RMSE
+```{r Model Very Simple}
+model.5 <- lm(saleprice ~ overall.qual + gr.liv.area, data = train)
+pred.5 <- predict(model.5, test)
+RMSE.5 <- sqrt(mean((pred.5 - test_y)^2))
+RMSE.5
 ```
 
-```{r}
-model.rf.5 <- train(saleprice ~ ., df,
-  tuneGrid = expand.grid(alpha = 0:1, lambda = seq(0.0001, 1, length = 20)),
-  method = "glmnet",
-  trControl = trainControl(method = "cv", number = 4, verboseIter = TRUE))
+```{r Stepwise Backward}
+step.back.model <- step(all.model, direction = "backward")
 
-plot(model.rf.5)
-max(model.rf.5[["results"]][["ROC"]])
-plot(model.rf.5$finalModel)
+summary(step.back.model)
+pred.test.back <- predict(step.back.model, newdata = test)
+RMSE.back <- sqrt(mean((pred.test.back - test_y)^2))
+RMSE.back
 ```
 
+```{r Stepwise Forward}
+step.forward.model <- step(all.model, direction = "forward")
 
+summary(step.forward.model)
+pred.test.forward <- predict(step.forward.model, newdata = test)
+RMSE.forward <- sqrt(mean((pred.test.forward - test_y)^2))
+RMSE.forward
+```
 
+```{r Decision Tree}
+library(tree)
 
+tree_model <- tree(saleprice ~ ., data = train)
+tree_model
 
+plot(tree_model)
+text(tree_model, pretty = 0)
 
+tree_pred <- predict(tree_model, test)
+RMSE.tree <- sqrt(mean((tree_pred - test_y)^2))
+RMSE.tree
+
+cv_tree <- cv.tree(tree_model)
+plot(cv_tree$size, cv_tree$dev, type = "b", xlab = "Tree Size", ylab = "MSE")
+
+cv_tree$size[1]
+
+pruned_model <- prune.tree(tree_model, best = 10)
+plot(pruned_model)
+text(pruned_model)
+
+pruned_pred <- predict(pruned_model, test)
+RMSE.pruned <- sqrt(mean((pruned_pred - test_y)^2))
+RMSE.pruned
+
+tree.lm.model <- lm(saleprice ~ overall.qual + gr.liv.area + bsmt.qual + total.bsmt.sf + x1st.flr.sf, data = train)
+tree.lm.pred <- predict(tree.lm.model, test)
+RMSE.tree.lm <- sqrt(mean((tree.lm.pred - test_y) ^ 2))
+RMSE.tree.lm
+
+RMSE.pruned - RMSE.tree.lm
+```
