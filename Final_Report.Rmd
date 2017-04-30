@@ -58,7 +58,7 @@ The second best model for predicting `saleprice`, as defined by the RMSE value o
 
 ## Model Generation
 
-Because PCR methods work best with numerical data, we first dropped all factor variables from our dataset, keeping only integer and numerical datatypes
+Because PCR methods work best with numerical data, we first dropped all factor variables from our training dataset, keeping only integer and numerical datatypes
 ```{r dropfactors}
 df_train_num <- df_train
 
@@ -70,7 +70,7 @@ for(i in colnames(df_train)){
 
 ```
 
-The dataset now contains `r dim(df_train_num)[2]` variables. We then generate a general pcr model using all the variables in this dataset to predict saleprice.
+The dataset now contains `r dim(df_train_num)[2]` variables. We then generate a general pcr model using all the variables in the training dataset to predict saleprice.
 ```{r modelGeneration}
 pcr.saleprice <- pcr(saleprice ~ ., data=df_train_num, scale=TRUE, validation="CV")
 ```
@@ -92,7 +92,9 @@ From the summary and the RSME plot, large jumps in the % of variance explained a
 
 ## Model Validation
 
-```{r modelvaldiation}
+The table below compares the predicted values to the actual values in the test dataset.
+
+```{r modelvaldiation, echo=FALSE}
 
 pcr.predict.1 <- predict(pcr.saleprice, df_test, ncomp=1)
 df_predict.1 <- data.frame(pcr.predict.1, df_test$saleprice)
@@ -113,7 +115,7 @@ stargazer(df_predict.1, df_predict.2, df_predict.3, type="text")
 ```
 
 
-Comparing the 3 Models, we see the following RMSE Values:
+Comparing the 3 Models, we see the following RMSE Values when applying the model to the test dataset:
 
   * Model 1 (1 Component): `r paste(round(saleprice_RMSE.1))`
   * Model 2 (7 Component): `r paste(round(saleprice_RMSE.2))`
