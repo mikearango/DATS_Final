@@ -198,43 +198,46 @@ head(df.Paul[order(df.Paul$RSquared,decreasing=TRUE),],20)
 
 ## Analyzing the Correlation Between Residential Sale Price and Neighborhood
 
-Based on the order of the variables above, we see that some variables explain much more variance in the sale price. than others. This list suggests that overall quality of the house, neighborhood the house is located, and several other factors are relatively important. We can see from the graph below that `saleprice` varies widely across `neighborhood`, which demonstrate the real estate adage of "location, location, location." 
+Based on the order of the variables above, we see that some variables explain much more variance in the sale price than others. This list suggests that the overall quality of the house, neighborhood the house is located in, and several other factors are relatively important. *Figure 4* sale price varies widely across different neighborhoods, which demonstrates the real estate adage of "location, location, location."  
 
-```{r pfb.neighborhood, echo=FALSE}
+```{r pfb.neighborhood, echo = FALSE}
 train_h.Paul$neighborhood <- factor(train_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
 test_h.Paul$neighborhood <- factor(test_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
+```
+
+```{r fig.cap = "Figure 4: Boxplot of Sale Price by Neighborhood", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
 ggplot(train_h.Paul, aes(x = neighborhood, y = saleprice)) + 
   geom_boxplot(fill = "#81AC9B") +
   theme(axis.text.x = element_text(angle = 90, size = 8), legend.position = "none") + 
-  scale_y_continuous(labels = dollar) 
+  scale_y_continuous("Sale Price", labels = dollar) + 
+  scale_x_discrete("Neighborhood")
 ```
 
-```{r pfb.datawrangling, echo=FALSE}
-
+```{r pfb.datawrangling, echo = FALSE}
 # In order to better interpret the regression analysis, factor variables are reordered and converted to numeric types relative to their order. For example:
 # no fireplace(1) > unfinished fireplace (2) > finished fireplace (3)
-
 test_h.Paul$bsmt.qual = as.numeric(factor(test_h.Paul$bsmt.qual, levels = c("No Basement", "Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$bsmt.qual = as.numeric(factor(train_h.Paul$bsmt.qual, levels = c("No Basement", "Po", "Fa", "TA", "Gd", "Ex")))
-
+# convert
 test_h.Paul$exter.qual = as.numeric(factor(test_h.Paul$exter.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$exter.qual = as.numeric(factor(train_h.Paul$exter.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
-
+# convert
 test_h.Paul$kitchen.qual = as.numeric(factor(test_h.Paul$kitchen.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$kitchen.qual = as.numeric(factor(train_h.Paul$kitchen.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
-
+# convert
 test_h.Paul$garage.finish = as.numeric(factor(test_h.Paul$garage.finish, levels = c("None", "Unf", "RFn", "Fin")))
 train_h.Paul$garage.finish = as.numeric(factor(train_h.Paul$garage.finish, levels = c("None", "Unf", "RFn", "Fin")))
-
+# convert
 test_h.Paul$fireplace.qu = as.numeric(factor(test_h.Paul$fireplace.qu, levels = c("No Fireplace", "Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$fireplace.qu = as.numeric(factor(train_h.Paul$fireplace.qu, levels = c("No Fireplace", "Po", "Fa", "TA", "Gd", "Ex")))
 ```
 
-### Regression Analysis
+## Regression Analysis
 
-In order to best understand the influence of variables that each individual explain relatively high portions of the deviation in saleprice, the following multivariate regression models are performed:
+In order to best understand the influence of variables that individually explain relatively large portions of variance in sale price, the following multivariate OLS regression models were run:
 
-```{r pfb.model1, echo=FALSE}
+```{r pfb.model1, echo = FALSE}
+#model 1
 model.Paul<-lm(saleprice~neighborhood +  
     bsmt.qual +  
     total.bsmt.sf +  
@@ -247,7 +250,7 @@ model.Paul<-lm(saleprice~neighborhood +
     yrs.since.remod + 
     ln.lot.area
     , data = train_h.Paul )
-
+# model 2
 model.Paul2<-lm(saleprice~overall.qual +
     neighborhood +  
     bsmt.qual +  
@@ -258,28 +261,39 @@ model.Paul2<-lm(saleprice~overall.qual +
     garage.area +  
     fireplace.qu +  
     yrs.since.remod , data = train_h.Paul )
-
+# regression output as table
 stargazer(model.Paul, model.Paul2, type="text", style="apsr")
 ```
 
-```{r pfb.testmodel1, echo=FALSE}
+```{r pfb.testmodel1, echo = FALSE}
+# Calculate test rmse
 p1.Paul <- predict(model.Paul, test_h.Paul)
 d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
 saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
 saleprice_RMSE_Paul.1 <- sqrt(saleprice_MSE.1)
 ```
 
-```{r pfb.testmodel2, echo=FALSE}
+```{r pfb.testmodel2, echo = FALSE}
+# Calculate test rmse
 Paul2 <- predict(model.Paul2, test_h.Paul)
 dPaul.p2 <- data.frame(Paul2, test_h.Paul$saleprice)
 saleprice_MSE.1 <- mean((dPaul.p2[,1]-dPaul.p2[,2])^2, na.rm=TRUE)
 saleprice_RMSE_Paul.2 <- sqrt(saleprice_MSE.1)
 ```
 
-From these two models, we can observe that `overall.qual` is significant and positively correlated with saleprice at the 1% level. `Neighborhood` generally has a signifcant impact on sales price in Model 2 at the 5% level. However, some neighborhoods do appear to be uncorrelated with any change in price. All other variables used in the model appear to have sigiificant relationships with `saleprice` at the 1% level.
+From these two models, we can observe that the overall quality of a house is significant and positively correlated with saleprice at the 1% level. The neighborhood a given house is located in generally has a signifcant impact on sales price in *Model 2* at the 5% level. However, it is worth noting that some neighborhoods appear to be uncorrelated with any change in the sale price. All other variables used in the model appear to have sigiificant relationships with sale price at the 1% level.
 
 ### Application of Model
-Evaluating these multivariate OLS regression model against test data suggest result in fairly low RMSE values: Model 1 = \$`r paste(round(saleprice_RMSE_Paul.1))`, Model 2 = \$`r paste(round(saleprice_RMSE_Paul.2))`. However, these models are likely not strong performers for prediction because of high multicollinearity within the model. For example, `overall.qual` will be highly correlated with `bsmt.qual` and `exter.qual`. In addition, the neighborhoods with higher prices may be highly correlated with `overall.qual`, `bsmt.qual`, and `exter.qual`. The more important application of these models is to develop an understanding for the variables that influence `saleprice`. Models 1 and 2 demonstrate the significance of `neighborhood`, `overall.qual`, `bsmt.qual`, `total.bsmt.sf`, `gr.liv.area`, `exter.qual`, `kitchen.qual`, `garage.area`, `garage.finish`, `fireplace.qual`, `yrs.since.remod`, and `ln.lot.area` on saleprice.
+
+Using these multivariate OLS regression models to predict sale price in the test data results in fairly low RMSE values. These results can be seen in *Table 3* below. However, these models are likely not strong performers for prediction because of high multicollinearity between the independent variables in the mode. For example, `overall.qual` will be highly correlated with `bsmt.qual` and `exter.qual`. In addition, the neighborhoods with higher prices may be highly correlated with `overall.qual`, `bsmt.qual`, and `exter.qual`. The more important application of these models is to develop an understanding for the variables that influence `saleprice`. Models 1 and 2 demonstrate the significance of `neighborhood`, `overall.qual`, `bsmt.qual`, `total.bsmt.sf`, `gr.liv.area`, `exter.qual`, `kitchen.qual`, `garage.area`, `garage.finish`, `fireplace.qual`, `yrs.since.remod`, and `ln.lot.area` on saleprice.
+
+Model           | Test RMSE
+----------------|-------------------------
+Model 1         | \$`r paste(round(saleprice_RMSE_Paul.1))`
+Model 2         | \$`r paste(round(saleprice_RMSE_Paul.2))`
+
+Table: Table 3: Test RMSE of Heuristic Approach OLS Models
+
 
 
 ```{r removeVarsPaul, echo=FALSE}
