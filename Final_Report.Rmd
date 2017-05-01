@@ -674,4 +674,47 @@ bwplot(resamples, metric = "Rsquared")
 
 ## Testing
 
+```{r rmse function, echo = FALSE}
+# A function to calculate the RMSE for a given model. The function takes 2 inputs: prediction and actual
+# prediction should be a vector of predicted values and actual should be the vector of actual values
+rmse <- function(prediction, actual) {
+  # calculate error
+  error <- prediction - actual
+  # calculate RMSE
+  sqrt(mean(error^2))
+}
+```
+
+```{r calculate predictions rmse, echo = FALSE}
+# Calculate model predictions on test data
+pred_rf1 <- predict(modelrf1, test_x)
+pred_rf2 <- predict(modelrf2, test_x)
+pred_rf3 <- predict(modelrf3, test_x)
+pred_enet <- predict(enet1, test_x)
+pred_ridge <- predict(ridge, test_x)
+pred_knn <- predict(knn1, test_x)
+pred_glmboost <- predict(glmboost1, test_x)
+# Calculate test RMSE 
+RMSE_rf1 <- rmse(pred_rf1, test_y)
+RMSE_rf2 <- rmse(pred_rf2, test_y)
+RMSE_rf3 <- rmse(pred_rf3, test_y)
+RMSE_enet <- rmse(pred_enet, test_y)
+RMSE_ridge <- rmse(pred_ridge, test_y)
+RMSE_knn <- rmse(pred_knn, test_y)
+RMSE_glmboost <- rmse(pred_glmboost, test_y)
+```
+
+We calculated the predicted values of each of our models on the test dataset and calculated the RMSE of each. The results can be seen in *Table 2* below. 
+
+Model Name      | Test RMSE
+----------------|-------------------------
+rf1             | `r RMSE_rf1`
+rf2             | `r RMSE_rf2`         
+rf3             | `r RMSE_rf3`
+elastic net     | `r RMSE_enet`
+ridge           | `r RMSE_ridge` 
+k-NN            | `r RMSE_knn` 
+glmboost        | `r RMSE_glmboost`
+
+Table: Table 2: Test RMSE of Machine Learning Models
 

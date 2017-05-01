@@ -193,63 +193,6 @@ print(min(enet2$results$RMSE))
 
 Our grid search show that a lambda of 7000 minimizes the RMSE of our model. By finding the optimal lambda, we were able to decrease our RMSE again.  
 
-## Step-wise Linear Regression
-
-### Forward Selection
-
-Next we decided to run some step-wise linear regression models. First, we tested forward selection. 
-
-```{r forward}
-set.seed(631)
-# Train glmnet with custom trainControl and tuning: model
-forward_model <- train(
-  # formula
-  saleprice ~ ., 
-  # data
-  training,
-  # set grid search parameters for alpha and lambda
-  # use glmnet method for lasso, ridge, and elastic net 
-  method = "leapForward",
-  # trainControl
-  trControl = myControl
-)
-# Print model to console
-print(forward_model)
-# plot RMSE vs alpha
-plot(forward_model)
-# Print minimum RMSE
-print(min(forward_model$results$RMSE))
-```
-
-As we can see from the code output, the forward selection model with no pre-processing does not turn out very well because of high levels of multicollinearity in the data.
-
-
-### Mixed Steps
-
-We also decided to run a mixed step-wise regression model. 
-
-```{r mixed}
-set.seed(343)
-# Train glmnet with custom trainControl and tuning: model
-mixed_model <- train(
-  # formula
-  saleprice ~ ., 
-  # data
-  training,
-  # set grid search parameters for alpha and lambda
-  # use glmnet method for lasso, ridge, and elastic net 
-  method = "leapSeq",
-  # trainControl
-  trControl = myControl
-)
-# Print model to console
-print(mixed_model)
-# plot RMSE vs alpha
-plot(mixed_model)
-# Print minimum RMSE
-print(min(mixed_model$results$RMSE))
-```
-
 # Complex Models
 
 ```{r knn}
@@ -304,8 +247,8 @@ print(min(glmboost1$results$RMSE))
 
 ```{r}
 # Create model_list
-model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, elastic1 = enet1, 
-                   elastic2 = enet2, forward1 = forward_model, mixed = mixed_model, 
+model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, `elastic net` = enet1, 
+                   ridge = ridge, 
                    knn = knn1, glmboost = glmboost1)
 # Pass model_list to resamples(): resamples
 resamples <- resamples(model_list)
