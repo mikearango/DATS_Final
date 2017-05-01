@@ -646,7 +646,7 @@ bwplot(resamps, metric = "RMSE")
 bwplot(resamps, metric = "Rsquared")
 ```
 
-## Testing
+# Evaluation of Cross-Validated Models
 
 ```{r rmse function, echo = FALSE}
 # A function to calculate the RMSE for a given model. The function takes 2 inputs: prediction and actual
@@ -682,6 +682,9 @@ We calculated the predicted values of each of our models on the test dataset and
 
 Model Name      | Test RMSE
 ----------------|-------------------------
+pcr.1           | $`r round(saleprice_RMSE.1, 2)`
+pcr.7           | $`r round(saleprice_RMSE.2, 2)`
+pcr.24          | $`r round(saleprice_RMSE.3, 2)`
 rf1             | $`r round(RMSE_rf1, 2)`
 rf2             | $`r round(RMSE_rf2, 2)`         
 rf3             | $`r round(RMSE_rf3, 2)`
