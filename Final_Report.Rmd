@@ -294,7 +294,7 @@ saleprice_RMSE_Paul.2 <- sqrt(saleprice_MSE.1)
 
 From these two models, we can observe that the overall quality of a house is significant and positively correlated with saleprice at the 1% level. The neighborhood a given house is located in generally has a significant impact on sales price in *Model 2* at the 5% level. However, it is worth noting that some neighborhoods appear to be uncorrelated with any change in the sale price. All other variables used in the model appear to have significant relationships with sale price at the 1% level.
 
-### Application of Model
+## Application of Model
 
 Using these multivariate OLS regression models to predict sale price in the test data results in fairly low RMSE values. These results can be seen in *Table 3* below. However, these models are likely not strong performers for prediction because of high multicollinearity between the independent variables in the mode. For example, `overall.qual` will be highly correlated with `bsmt.qual` and `exter.qual`. In addition, the neighborhoods with higher prices may be highly correlated with `overall.qual`, `bsmt.qual`, and `exter.qual`. We already saw in the *Exploratory Data Analysis and Ordinary Least Squares Regression* section that OLS is not the best model for predicting sale price given our housing data as many classical assumptions are violated. Nevertheless, the models are important in that they help us to develop an understanding of the variables that influence sale price.
 
@@ -506,7 +506,7 @@ print(modelrf3)
 
 Surprisingly, this model had the highest training RMSE of the three models run to this point ($50954.65). The regression output shows that 19 variables were removed because they were near-zero variance predictors and the remaining 62 were centered, scaled, and subject to a PCA. This model also explained the least amount of variation in sale price. 
 
-## Elastic Net Regularization 
+### Elastic Net Regularization 
 
 Elastic net regularization is a mixed method model that is closely linked to lasso (least absolute shrinkage and selection operator) and ridge regression. Lasso and ridge regression are two very common ways of dealing with collinearity of variables and can be seen as a subsitute to stepwsie regression and dimensionality reduction techniques. However, each method deals with collinearity differently. Lasso regression penalizes the number of non-zero coefficients whereas ridge regression penalizes the absolute magnitude of the coefficients. Elastic net regularization is a combination of the two models with a parameter $\alpha$, bounded between zero and one, that is referred to as the *mixing* parameter---0 is pure-lasso regression and 1 is pure-ridge regression. Elastic net also has a $\lambda$ paramater which ranges from zero to infinity which is referred to as the *regularization*---this parameter represents the size of the penalty and higher values of lambda correspond to simpler models [@lasso].[5]
 
@@ -568,7 +568,7 @@ The regression results show that the optimal model drops our training RMSE down 
 plot(ridge)
 ```
 
-## k-Nearest Neighbors Regression and Gradient Boosting
+### k-Nearest Neighbors Regression and Gradient Boosting
 
 The *k*-nearest neighbors algorithm is a non-parametric method that can be used for classification or regression. We take the *k* closest examples to the point we are trying to predict via a given distance metric (Euclidean, Manhattan, Malinowski, etc.) and fit the best line between the neighbors. This process is repeated for each point in the model, so it is a technique that is very computationally expensive if used on a larger dataset. It is important to find the right value of *k* as we can easily over-fit by picking a *k* that is too low or under-fit by picking a *k* that is too high. 
 
@@ -717,9 +717,9 @@ prediction_rf1_rf2_test <- data.frame(df_test$saleprice, pred_rf1, pred_rf2)
 prediction_rf1_rf2_test <- dplyr::rename(prediction_rf1_rf2_test, Actual_SalePrice=df_test.saleprice, Prediction_RF1_SalePrice=pred_rf1, Prediction_RF2_SalePrice=pred_rf2)
 # output to table
 stargazer(prediction_rf1_rf2_test, type="html", title="Table 5: Prediction Results", header=FALSE)
-
-
 ```
+
+
 
 
 # References
