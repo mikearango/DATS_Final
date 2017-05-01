@@ -21,13 +21,10 @@ library(tidyverse)
 library(stargazer)
 library(pls)
 library(scales)
-<<<<<<< HEAD
 library(car)
-=======
 library(caret)
 library(png)
 library(grid)
->>>>>>> origin/master
 ```
 
 # Intro
@@ -94,7 +91,7 @@ The cleaned dataset has 2838 observations of 82 variables. This means that we on
 
 # # Model Creation and Evaluation
 
-<<<<<<< HEAD
+
 ```{r}
 test_y <- df_test[, "saleprice"]
 
@@ -108,10 +105,8 @@ i <- sapply(df_test, is.factor)
 df_test[i] <- lapply(df_test[i], as.integer)
 ```
 
-We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit. The first model we decide to create was a linear regression model containing all the predictors in the data set. 
-=======
 We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit. The first model we decided to create was an ordinary least squares (OLS) model containing all the predictors in the data set. 
->>>>>>> origin/master
+
 
 
 ```{r Full Model}
