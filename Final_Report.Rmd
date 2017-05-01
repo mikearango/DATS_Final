@@ -28,6 +28,7 @@ library(car)
 library(caret)
 library(png)
 library(grid)
+library(lattice)
 ```
 
 # Intro
@@ -92,7 +93,7 @@ The cleaned dataset has 2838 observations of 82 variables. This means that we on
 
 # Regression Model Approach 1 - Jack
 
-# # Model Creation and Evaluation
+## Model Creation and Evaluation
 
 
 ```{r}
@@ -203,10 +204,11 @@ The decision tree model has an RMSE = 36946.74. Although this model has a higher
 
 # Regression Model Approach 2 - Paul
 ```{r pfb.intro, echo=FALSE, message=FALSE}
-train_h.Paul <- df_train
-test_h.Paul <- df_test
+train_h.Paul <- read.csv("train_housing.csv", header = TRUE)
+test_h.Paul <- read.csv("test_housing.csv", header = TRUE)
 ```
 ## Real Estate Based-Model
+
 The dataset presents challenges for the exercise of establishing a projected sale price. The large number and wide variety of attributes associated with the sale of a house complicate the process of establishing an understandable model.  After cleaning 83 attributes are associated with each sale.  Multiple attributes are used to characterize the same basic feature.  Many factors are characterized by multiple levels with distinctions that are complicated to value.  My approach was to use conventional Real Estate guidance as a guide for the selection of attributes to build a conventional regression model.  The purpose is to establish a model whose results can be communicated to a home seller and buyer. Communication of the factors that contributed to the model was a key goal.
 
 I started the process with a set of 83 models that mapped each attribute individually against the sale price.  I created a list by adjusted R squared value and sorted it in descending order.  This became my candidate list for the guided attribute selection process.  
@@ -426,8 +428,8 @@ Model 2 appears to be the best, as Model 3 risks overfitting for not a much bett
 
 ```{r import and preprocess, include = FALSE}
 # read in train and test data
-train_mike <- df_train
-test_mike <- df_test
+train_mike <- read.csv("train_housing.csv", header = TRUE)
+test_mike <- read.csv("test_housing.csv", header = TRUE)
 # make a dataframe of all numeric features
 num_features = names(which(sapply(train_mike, is.numeric)))
 df.numeric = train_mike[num_features]
@@ -539,7 +541,7 @@ modelrf3 <- train(
 print(modelrf3)
 ```
 
-Surprisingly, this model had the highest training RMSE of the three models run to this point (\$`r (min(modelrf3$results$RMSE)`). The regression output shows that 19 variables were removed because they were near-zero variance predictors and the remaining 62 were centered, scaled, and subject to a PCA. This model also explained the least amount of variation in sale price. 
+Surprisingly, this model had the highest training RMSE of the three models run to this point (\$`r min(modelrf3$results$RMSE)`). The regression output shows that 19 variables were removed because they were near-zero variance predictors and the remaining 62 were centered, scaled, and subject to a PCA. This model also explained the least amount of variation in sale price. 
 
 ## Elastic Net Regularization 
 
@@ -665,18 +667,18 @@ To compare models in which we cross-validated on the same folds, we decided make
 model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, `elastic net` = enet1, 
                    ridge = ridge, knn = knn1, glmboost = glmboost1)
 # Pass model_list to resamples(): resamples
-resamples <- resamples(model_list)
+resamps <- resamples(model_list)
 # Summarize the results
-summary(resamples)
+summary(resamps)
 ```
 
 ```{r rmse models, fig.cap = "Figure D: RMSE of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
-bwplot(resamples, metric = "RMSE")
+bwplot(resamps, metric = "RMSE")
 ```
 
 
 ```{r r2models, fig.cap = "Figure E: R-squared of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
-bwplot(resamples, metric = "Rsquared")
+bwplot(resamps, metric = "Rsquared")
 ```
 
 ## Testing
