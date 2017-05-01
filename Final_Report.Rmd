@@ -26,6 +26,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("glmnet")
 # install.packages("kknn")
 # install.packages("mboost")
+# install.packages("htmlTable")
 library(tidyverse)
 library(stargazer)
 library(pls)
@@ -37,6 +38,7 @@ library(grid)
 library(lattice)
 library(e1071)
 library(ranger)
+library(htmlTable)
 
 options(scipen = 999)
 ```
@@ -157,7 +159,7 @@ The most simplistic model still explains about 83 percent of the variation in sa
 
 ```{r linreg output, message = FALSE, echo=FALSE, results='asis'}
 stargazer(all.model, model.2, model.3, type = "html", style = "apsr", title=
-            "Table 2: Simple OLS Regressions")
+            "Table 2: Simple OLS Regressions", digits=2)
 ```
 
 ## Classical Assumptions of the Ordinary Least Squares Model
@@ -273,7 +275,7 @@ model.Paul2<-lm(saleprice~overall.qual +
     fireplace.qu +  
     yrs.since.remod , data = train_h.Paul )
 # regression output as table
-stargazer(model.Paul, model.Paul2, type="html", style="apsr")
+stargazer(model.Paul, model.Paul2, type="html", style="apsr", digits=2, header=FALSE)
 ```
 
 ```{r pfb.testmodel1, echo = FALSE}
@@ -370,7 +372,7 @@ output_df <- data.frame(df_predict.1$df_test.saleprice, df_predict.1$saleprice.1
 # rename df
 output_df <- dplyr::rename(output_df, test_data=df_predict.1.df_test.saleprice, Prediction.1.Component=df_predict.1.saleprice.1.comps, Prediction.7.Component=df_predict.2.saleprice.7.comps, Prediction.24.Component=df_predict.3.saleprice.24.comps)
 # output to table
-stargazer(output_df, type="html", header=FALSE)
+stargazer(output_df, type="html", header=FALSE, summary.stat=c("n","median", "sd", "min", "max"), digits=2)
 ```
 
 Comparing the 3 Models, we see the following RMSE Values when applying the model to the test dataset:
@@ -706,20 +708,44 @@ From Table 4, we can see that the rf1 and rf2 are likely the strongest and most 
 
 # Example Predictions
 
-Table 5 demonstrates the ability of our model to predict the saleprice, given specific variables.
+## Prediction on test data
+
+Table 5 demonstrates the ability of our model to predict the saleprice, given specific variables from the test data set. Table 5 shows the predicted values for median and mode are close to the median of the actual dataset. 
 
 ```{r predict_rf1_rf2, echo=FALSE, results='asis'}
-
 df_test <- read.csv("test_housing.csv", header = TRUE)
 
 prediction_rf1_rf2_test <- data.frame(df_test$saleprice, pred_rf1, pred_rf2)
 
 prediction_rf1_rf2_test <- dplyr::rename(prediction_rf1_rf2_test, Actual_SalePrice=df_test.saleprice, Prediction_RF1_SalePrice=pred_rf1, Prediction_RF2_SalePrice=pred_rf2)
 # output to table
-stargazer(prediction_rf1_rf2_test, type="html", title="Table 5: Prediction Results", header=FALSE)
+stargazer(prediction_rf1_rf2_test, type="html", title="Table 5: Prediction Results", header=FALSE, summary.stat=c("n","median", "sd", "min", "max"), digits=2)
 ```
 
+## Prediction for individual house
 
+Using the following input paramters (from the 1st observation of the test data), the rf1 model predicts the sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`, and rf2 model predicts sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`. The true price of this house is $`r round(test_y[1,], 2)`.
+
+```{r example1, echo=FALSE, results='asis'}
+test_x[1,]
+
+update_test_x_1 <- test_x[1,]
+update_test_x_1$garage.cars <- 3
+```
+
+## Example For Changing One Feature - Garage
+
+If we change the garage size from a `r test_x[1,'garage.cars']` car garage to a 3 car garage, model rf1 predicts price to increase to \$`r round(predict(modelrf1, update_test_x_1),2)` (a `r round( (predict(modelrf1, update_test_x_1) - predict(modelrf1, test_x[1,]) )/predict(modelrf1, test_x[1,]),4)*100`% change in sale price). Model rf2 predicts price to increase to \$`r round(predict(modelrf2, update_test_x_1),2)` (a `r round( (predict(modelrf2, update_test_x_1) - predict(modelrf2, test_x[1,]) )/predict(modelrf2, test_x[1,]),4)*100`% change in sale price).
+
+
+# Limitations
+
+These models are primarily limited by external validity. The data is limited to Ames, Iowa from 2006 to 2010, and our tests of prediction ability (RMSE) was conducted using test data from Ames, Iowa. Applying these models to other areas, like New York City, to commercial markets, or to time periods before 2006 or after 2010. Additionally, the financial crisis of 2006 and 2012 may make these models specific to this time period and region. Future work may compare Ames, Iowa to other housing markets or develop a model based off housing data from a larger region or at a national scope. This difficulty in developing these datasets is consistency in variables across regions, especially for subject features, like overall house quality (`overall.qual`).
+
+
+# Conclusion
+
+We attempted to several approaches for modeling. We found that OLS linear regression models failed to match all the assumptions needed for proper interpretations. However, a regression model does allow us to understand some factors that are important to sale price, such as overall house quality and neighborhood. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for prediction ability. The most robust models were the random forest models (rf1, RMSE: \$`r round(RMSE_rf1, 2)` and rf2, RMSE: \$`r round(RMSE_rf1, 2)`).
 
 
 # References
