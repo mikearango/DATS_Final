@@ -8,6 +8,7 @@ output:
     theme: yeti
     toc: yes
     fontsize: 11
+    css: style.css
 ---
 
 ```{r setup, include = FALSE}
@@ -111,9 +112,9 @@ i <- sapply(df_test, is.factor)
 df_test[i] <- lapply(df_test[i], as.integer)
 ```
 
-We decided to begin our post-cleaning analysis and model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit and most intuitively interpretable. The first model we decided to create was an ordinary least squares (OLS) model containing all the predictors in the data set. The results of the model can be seen in the regression output below.
+We decided to begin our post-cleaning analysis and model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit and most intuitively interpretable. The first model we decided to create was an ordinary least squares (OLS) model containing all the predictors in the data set. The results of the model can be seen in the regression output below (Table 2: Model 1).
 
-```{r Full Model}
+```{r Full Model, warning=FALSE}
 # kitchen sink model
 all.model <- lm(saleprice ~ ., data = df_train)
 # predict on test set
@@ -121,17 +122,21 @@ pred.all <- predict(all.model, df_test)
 RMSE.all <- sqrt(mean((pred.all - test_y)^2))
 ```
 
-The test RMSE of the kitchen sink model with all variables is $30198.86. It is worth noting that we do not cross validate the simpler linear models, so they are not easily comparable to later models in which a robust k-fold cross validation technique is implemented. Moreover, we only look at the test RMSE for the simple linear models to see how our simple models handle new observations that they have not seen before. From the regression output below, we can tell there are several instances of multicollinearity since there are places in which coefficient estimates are not generate and the output tells us the fitted values come from a rank-deficient matrix---this implies the matrix is not full rank which entails the columns are not linearly independent of one another and linear dependence implies we may create columns from linear combinations of one another. Many predictors have high p-values and appear to be statistically insignicant. All predictors that demostrated perfect multicollinearity or have a p-value > 0.2 were dropped to reduce dimensionality and include variables that account for actual variance in the sale price variable as opposed to random noise. Then, we ran the modified model to see if our changes result in a lower prediction RMSE.   
+The test RMSE of the kitchen sink model with all variables is $30198.86. It is worth noting that we do not cross validate the simpler linear models, so they are not easily comparable to later models in which a robust k-fold cross validation technique is implemented. Moreover, we only look at the test RMSE for the simple linear models to see how our simple models handle new observations that they have not seen before. From the regression output below, we can tell there are several instances of multicollinearity since there are places in which coefficient estimates are not generate and the output tells us the fitted values come from a rank-deficient matrix---this implies the matrix is not full rank which entails the columns are not linearly independent of one another and linear dependence implies we may create columns from linear combinations of one another. Many predictors have high p-values and appear to be statistically insignicant. All predictors that demostrated perfect multicollinearity or have a p-value > 0.2 were dropped to reduce dimensionality and include variables that account for actual variance in the sale price variable as opposed to random noise. Then, we ran the modified model to see if our changes result in a lower prediction RMSE (Table 2: Model 2).   
 
-```{r Model 2}
+```{r Model 2, echo=FALSE}
 # linear model 2
 model.2 <- lm(saleprice ~ ms.zoning + lot.area + street + land.contour + land.slope + neighborhood + condition.1 + condition.2 + bldg.type + house.style + overall.qual + overall.cond + year.built + roof.style + exterior.1st + exterior.2nd + mas.vnr.type + mas.vnr.area + exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.sf.1 + bsmtfin.sf.2 + bsmt.unf.sf + heating.qc + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath + bsmt.half.bath + full.bath + bedroom.abvgr + functional + fireplaces + fireplace.qu + garage.yr.blt + garage.cars + garage.area + wood.deck.sf + enclosed.porch + screen.porch + misc.feature + sale.type + sale.condition + ln.lot.frontage + ln.lot.area, data = df_train)
 # calculate rmse
 pred.2 <- predict(model.2, df_test)
 RMSE.2 <- sqrt(mean((pred.2 - test_y)^2))
+```
+
+```{r vifModel2}
 # calculate variance inflation factors
 vif(model.2)
 ```
+
 
 Surprisingly, the RMSE of the modified model increased slightly to \$30200.18. This is most likely because we are no longer overfitting the model as badly as before. As we can see from the variance inflation factors (VIFs), the high levels of multicollinearity between variables has been drastically decreased, but there are still some variables that need to be dropped. As a rule-of-thumb, economists usually drop variables with a VIF of greater than five to tease out multicollinearity between variables. The $R^2$ of the model is equal to 0.874 while the adjusted $R^2$ of the model is equal to 0.871. This shows that despite the high number of predictors variables in the model (45) we have not been penalized heavily since most variables account for a significant amount of variance in sale price. We can further simplify and improve this model by dropping highly correlated variables and insignificant predictors. 
 
@@ -145,8 +150,9 @@ RMSE.3 <- sqrt(mean((pred.3 - test_y)^2))
 
 The most simplistic model still explains about 83 percent of the variation in sale price---only 4 percent less than very complicated models. But, if we look at the difference in the regression coefficients of the three models, the third model has the most reasonable value (about $7,000). Hypothetically, this implies that a typical residential property in Ames, Iowa with none of the included features in the model, would be priced, on average, at about \$7000. This is a much more reasonable assumption than the \$500000 or \$-700000 that the first and second model provide. Thus, even though the most simplistic model has the largest RMSE (\$33777.69) of the three linear models, the third model is the most statistically sound model for prediction.
 
-```{r linreg output, message = FALSE}
-stargazer(all.model, model.2, model.3, type = "text", style = "apsr")
+```{r linreg output, message = FALSE, echo=FALSE, results='asis'}
+stargazer(all.model, model.2, model.3, type = "html", style = "apsr", title=
+            "Table 2: Simple OLS Regressions")
 ```
 
 ## Classical Assumptions of the Ordinary Least Squares Model
@@ -287,7 +293,7 @@ rm(list=setdiff(ls(), c("saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.
 ```
 
 
-# Principle Component Regression (PCR) - Yesh
+# Principle Component Regression (PCR)
 
 PCR is an application of Principle Component Analysis (PCA) to regression modeling. By creating "components," which are linear transformations of the variables in our dataset, multicollinearity can be minimized by using these components in the regression model, rather than the original variables. This can create a better prediction model, with lower risk of overfitting, than a traditional regression model. However, the ability to interpret the coefficients of the model is lost because each component variable is a linear combination of all the variables in the original dataset.
 
@@ -363,7 +369,7 @@ rm(list=setdiff(ls(), c("saleprice_RMSE.1", "saleprice_RMSE.2", "saleprice_RMSE.
 ```
 
 
-# Random Forest Regression - Mike
+# Random Forest Regression
 
 ## Data Pre-processing
 
