@@ -724,7 +724,7 @@ stargazer(prediction_rf1_test, type="html", title="Table 5: Prediction Results",
 
 ## Prediction for individual house
 
-Using the following input paramters (from an observation of the test data), the modelrf1 predicts the sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`. The true price of this house is $`r round(test_y[1,], 2)`.
+Using the following input paramters (from an observation of the test data), the modelrf1 predicts the sale price to be \$`r round( predict(modelrf1, test_x[22,]))`. The true price of this house is $`r round(test_y[22,])`.
 
 ```{r example1, echo=FALSE}
 test_x[22,]
