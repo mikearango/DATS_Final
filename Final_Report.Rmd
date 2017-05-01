@@ -706,15 +706,15 @@ From Table 4, we can see that the rf1 and rf2 are likely the strongest and most 
 
 Table 5 demonstrates the ability of our model to predict the saleprice, given specific variables.
 
-```{r predict_rf1_rf2, echo=FALSE}
+```{r predict_rf1_rf2, echo=FALSE, results='asis'}
 
 df_test <- read.csv("test_housing.csv", header = TRUE)
 
 prediction_rf1_rf2_test <- data.frame(df_test$saleprice, pred_rf1, pred_rf2)
 
-prediction_rf1_rf2_test <- dplyr::rename(prediction_rf1_rf2_test, Actual_SalePrice=df_test.saleprice, Prediction_RF1_SalePrice=pred_rf1, Prediction_RF1_SalePrice=pred_rf2)
+prediction_rf1_rf2_test <- dplyr::rename(prediction_rf1_rf2_test, Actual_SalePrice=df_test.saleprice, Prediction_RF1_SalePrice=pred_rf1, Prediction_RF2_SalePrice=pred_rf2)
 # output to table
-stargazer(prediction_rf1_rf2_test, type="text", title="Table 5: Prediction Results", header=FALSE)
+stargazer(prediction_rf1_rf2_test, type="html", title="Table 5: Prediction Results", header=FALSE)
 
 
 ```
