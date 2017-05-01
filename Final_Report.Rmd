@@ -210,37 +210,32 @@ The decision tree model has an RMSE = 36946.74. Although this model has a higher
 rm(list=setdiff(ls(), c("RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
 ```
 
-# Regression Model Approach 2 - Paul
+# Regression Model Approach 2
 ```{r pfb.intro, echo=FALSE, message=FALSE}
 train_h.Paul <- read.csv("train_housing.csv", header = TRUE)
 test_h.Paul <- read.csv("test_housing.csv", header = TRUE)
 ```
-## Real Estate Based-Model
 
-The dataset presents challenges for the exercise of establishing a projected sale price. The large number and wide variety of attributes associated with the sale of a house complicate the process of establishing an understandable model.  After cleaning 83 attributes are associated with each sale.  Multiple attributes are used to characterize the same basic feature.  Many factors are characterized by multiple levels with distinctions that are complicated to value.  My approach was to use conventional Real Estate guidance as a guide for the selection of attributes to build a conventional regression model.  The purpose is to establish a model whose results can be communicated to a home seller and buyer. Communication of the factors that contributed to the model was a key goal.
+In this approach to a regression model, we take a systematic approach to generating a regression model used to predict sales prices within the Residential Sales Ames, Iowa dataset. This model serves to better understand the factors that influence sales price and can be considered a form of exploratory data analysis. We first ordered the variables by R^2^ values in relationship to the `salesprice` in order to understand which variables singularly explain the most variance in `saleprice`. 
 
-I started the process with a set of 83 models that mapped each attribute individually against the sale price.  I created a list by adjusted R squared value and sorted it in descending order.  This became my candidate list for the guided attribute selection process.  
-The R code is shown below along with the resultant list of variables and the adjusted R squared values. 
-
-```{r pfb.building.ordered.list, warning=FALSE}
+```{r pfb.building.ordered.list, warning=FALSE, echo=FALSE}
 df.Paul <- data.frame(Variable = character(ncol(train_h.Paul)), AdjRSquared = numeric(ncol(train_h.Paul)), stringsAsFactors = FALSE)
 for(i in 1:ncol(train_h.Paul)) {
   df.Paul$Variable[i]<- labels(train_h.Paul)[[2]][[i]]
-  df.Paul$AdjRSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$adj.r.squared
+  df.Paul$RSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$r.squared
 }
-head(df.Paul[order(df.Paul$AdjRSquared,decreasing=TRUE),],20)
+
+head(df.Paul[order(df.Paul$RSquared,decreasing=TRUE),],20)
 ```
 
-### Overall Quality
-The most prominent attribute is overall.qual.  It rates the overall material and finish of the house.  The values range from Very Poor (1) to Very Excellent (10).  I am a bit suspicious of this variable since it is based on a subjective evaluation by the compiler of the data set. The observed tracking with the sale price of the house as shown in the graph that follows may not be quite coincidental. I have created a regression model with the variable and one without it on the grounds that it may obscure other factors that are more reliably grounded.
-```{r pfb overall quality}
-plot(train_h.Paul$overall.qual,train_h.Paul$saleprice)
-```
 
-### Location. 
-The classic real estate refrain says, "location, location, location." The data from Ames, IA provides a single attribute, neighborhood, that stands in for this concept.  Each property is identified by neighborhood.  The graph below shows the impact of neighborhood on housing sale price. I re coded Neighborhood to a factor in an order which reflected the mean sale price.  This allows a clear display of the changes in sale prices as one moves up to what would seem to be the more upscale locations.
+## Analysis
 
-```{r pfb.neighborhood}
+### Sales Price and Neighborhood EDA
+
+Based on the order of the variables above, we see that some variables can a greater percentage of the deviation in the saleprice than others. This list suggests that overall quality of the house, neighborhood the house is located, and several other factors are relatively important. We can see from the graph below that `saleprice` varies widely across `neighborhood`, which demonstrate the real estate adage of "location, location, location."
+
+```{r pfb.neighborhood, echo=FALSE}
 train_h.Paul$neighborhood <- factor(train_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
 test_h.Paul$neighborhood <- factor(test_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
 ggplot(train_h.Paul, aes(x = neighborhood, y = saleprice)) + 
@@ -249,72 +244,32 @@ ggplot(train_h.Paul, aes(x = neighborhood, y = saleprice)) +
   scale_y_continuous(labels = dollar) 
 ```
 
-### Living area
-The size of the home in terms of square feet is used within the real estate community as a mechanism for the development of lists of comparable houses.  In the cleaned data set the value is shown in the gr.liv.area.   The approximate per sq ft charge in Ames, IA is indicated by the coefficient of the model as approximately $44. 
+```{r pfb.datawrangling, echo=FALSE}
 
-### Basement
-A finished basement has a clear value since by itself is a pretty good predictor of the sale price.  Both the total square feet and the evaluation of the height of the basement ceiling have been kept in the evaluation.  A basement square foot would have an approximate value 0f $21.  Bsmt Qual evaluates the height of the basement.  We have converted this value to a numeric value from 1 to 6 in ascending indications of quality.
+# In order to better interpret the regression analysis, factor variables are reordered and converted to numeric types relative to their order. For example:
+# no fireplace(1) > unfinished fireplace (2) > finished fireplace (3)
 
-       Ex	Excellent (100+ inches)	
-       Gd	Good (90-99 inches)
-       TA	Typical (80-89 inches)
-       Fa	Fair (70-79 inches)
-       Po	Poor (<70 inches
-       NA	No Basement
-```{r pfb.basement}
 test_h.Paul$bsmt.qual = as.numeric(factor(test_h.Paul$bsmt.qual, levels = c("No Basement", "Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$bsmt.qual = as.numeric(factor(train_h.Paul$bsmt.qual, levels = c("No Basement", "Po", "Fa", "TA", "Gd", "Ex")))
-```
-### Exterior Condition 
-External Quality evaluates the quality of the material on the exterior using a Poor to Excellent scale.  This is subject to some of the same concerns discussed previously under overall.qual. Since first impression often drive sales prices, a factor for external appearance is usefully maintained.
-```{r pfb.exter}
+
 test_h.Paul$exter.qual = as.numeric(factor(test_h.Paul$exter.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$exter.qual = as.numeric(factor(train_h.Paul$exter.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
-```
-### Kitchen Condition
-Kitchen Quality is a subjective evaluation using a Poor to Excellent rating stored in kitchen.qual,  Real estate agents often cite the lack of new appliances in a kitchen as a price determinant.  Without any other more objective criteria in the model, we have decided to keep it in the final model.
-```{r pfb.kitchen}
+
 test_h.Paul$kitchen.qual = as.numeric(factor(test_h.Paul$kitchen.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$kitchen.qual = as.numeric(factor(train_h.Paul$kitchen.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
-```
-### Garage
-The number of significant factors in the top price drivers was a surprise.  The importance of garage in determining the sales price may be a cultural artifact of the Ames, IA environment indicating a greater reliance on cars as both a means of transport and a status symbol.  Of the four variables that describe the garages, we have elected to keep two, garage,area and garage.finish.  The garage.cars variable would seem to overlap with the garage.areas and no clear hierarchy exists for the garage.type.
 
-Garage Finish has been converted to a numeric value from 1 to 4 in ascending indications of quality.
-
-       Fin	Finished
-       RFn	Rough Finished	
-       Unf	Unfinished
-       None	No Garage
-```{r pfb.garage}
 test_h.Paul$garage.finish = as.numeric(factor(test_h.Paul$garage.finish, levels = c("None", "Unf", "RFn", "Fin")))
 train_h.Paul$garage.finish = as.numeric(factor(train_h.Paul$garage.finish, levels = c("None", "Unf", "RFn", "Fin")))
-```
-### Fireplace
-Fireplace quality is a more objectively derived attribute than those cited above.  Fireplaces would seem to be a highly prized amenity in Ames, IA. We have converted this value to a numeric value from 1 to 6 in ascending indications of quality.
 
-       Ex	Excellent - Exceptional Masonry Fireplace
-       Gd	Good - Masonry Fireplace in main level
-       TA	Average - Prefabricated Fireplace in main living area or Masonry Fireplace in basement
-       Fa	Fair - Prefabricated Fireplace in basement
-       Po	Poor - Ben Franklin Stove
-       NA	No Fireplace
-```{r pfb.fireplace}
 test_h.Paul$fireplace.qu = as.numeric(factor(test_h.Paul$fireplace.qu, levels = c("No Fireplace", "Po", "Fa", "TA", "Gd", "Ex")))
 train_h.Paul$fireplace.qu = as.numeric(factor(train_h.Paul$fireplace.qu, levels = c("No Fireplace", "Po", "Fa", "TA", "Gd", "Ex")))
 ```
-### Recently Remodeled
-Recent remodeling would seem to be a variable that would tend to indicate the presence of new appliances and updated styles in the property. This value is stored in the cleaned data set as  yrs.since.remod.
 
-### Lot Area
-Lot Area is often a component of the property tax calculation and is often an indicator of the expected sale price.  We have included the ln.lot.area within the model to reflect its impact.
+### Regression Analysis
 
-### Sale Type
-Sale Type have indicators of the nature of the sale.  We're particularly interested in including the embedded indicator of a New house sale that will arguably have a premium.
+In order to best understand the influence of variables that each individual explain relatively high portions of the deviation in saleprice, the following multivariate regression models are performed:
 
-### Summary
-The final models with and without the overall.qual is shown below.  
-```{r pfb.model1}
+```{r pfb.model1, echo=FALSE}
 model.Paul<-lm(saleprice~neighborhood +  
     bsmt.qual +  
     total.bsmt.sf +  
@@ -337,25 +292,30 @@ model.Paul2<-lm(saleprice~overall.qual +
     kitchen.qual +   
     garage.area +  
     fireplace.qu +  
-    yrs.since.remod     , data = train_h.Paul )
+    yrs.since.remod , data = train_h.Paul )
 
 stargazer(model.Paul, model.Paul2, type="text", style="apsr")
 ```
-The evaluation of model (1) against the train data set is shown below
-```{r pfb.testmodel1}
+
+```{r pfb.testmodel1, echo=FALSE}
 p1.Paul <- predict(model.Paul, test_h.Paul)
 d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
 saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
 saleprice_RMSE_Paul.1 <- sqrt(saleprice_MSE.1)
 ```
 
-The evaluation of model (2) against the train data set is shown below
-```{r pfb.testmodel2}
+```{r pfb.testmodel2, echo=FALSE}
 Paul2 <- predict(model.Paul2, test_h.Paul)
 dPaul.p2 <- data.frame(Paul2, test_h.Paul$saleprice)
 saleprice_MSE.1 <- mean((dPaul.p2[,1]-dPaul.p2[,2])^2, na.rm=TRUE)
 saleprice_RMSE_Paul.2 <- sqrt(saleprice_MSE.1)
 ```
+
+From these two models, we can observe that `overall.qual` is significant and positively correlated with saleprice at the 1% level. `Neighborhood` generally has a signifcant impact on sales price in Model 2 at the 5% level. However, some neighborhoods do appear to be uncorrelated with any change in price. All other variables used in the model appear to have sigiificant relationships with `saleprice` at the 1% level.
+
+### Application of Model
+Evaluating these multivariate OLS regression model against test data suggest result in fairly low RMSE values: Model 1 = \$`r round(saleprice_RMSE_Paul.1)`, Model 2 = \$`r round(saleprice_RMSE_Paul.2)`. However, these models are likely not strong performers for prediction because of high multicollinearity within the model. For example, `overall.qual` will be highly correlated with `bsmt.qual` and `exter.qual`. In addition, the neighborhoods with higher prices may be highly correlated with `overall.qual`, `bsmt.qual`, and `exter.qual`. The more important application of these models is to develop an understanding for the variables that influence `saleprice`. Models 1 and 2 demonstrate the significance of `neighborhood`, `overall.qual`, `bsmt.qual`, `total.bsmt.sf`, `gr.liv.area`, `exter.qual`, `kitchen.qual`, `garage.area`, `garage.finish`, `fireplace.qual`, `yrs.since.remod`, and `ln.lot.area` on saleprice.
+
 
 ```{r removeVarsPaul, echo=FALSE}
 rm(list=setdiff(ls(), c("saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
