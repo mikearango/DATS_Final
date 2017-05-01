@@ -204,6 +204,9 @@ Pruning is not necessary for the tree as cross-validation plot shows that the ma
 
 The decision tree model has an RMSE = 36946.74. Although this model has a higher RMSE than the linear and stepwise regressions, the decision tree's lack of assumptions make it a prefered modeling technique for this data. Analyzing the nodes shows that the decision tree only splits into ten leafs and predicts sales prices on very few variables. As such, a more robust decision tree regression model, such as a random forest model, would most like result in a better fitting model.
 
+```{r removeVarsJack, echo=FALSE}
+rm(list=setdiff(ls(), c("RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
+```
 
 # Regression Model Approach 2 - Paul
 ```{r pfb.intro, echo=FALSE, message=FALSE}
@@ -216,6 +219,7 @@ The dataset presents challenges for the exercise of establishing a projected sal
 
 I started the process with a set of 83 models that mapped each attribute individually against the sale price.  I created a list by adjusted R squared value and sorted it in descending order.  This became my candidate list for the guided attribute selection process.  
 The R code is shown below along with the resultant list of variables and the adjusted R squared values. 
+
 ```{r pfb.building.ordered.list, warning=FALSE}
 df.Paul <- data.frame(Variable = character(ncol(train_h.Paul)), AdjRSquared = numeric(ncol(train_h.Paul)), stringsAsFactors = FALSE)
 for(i in 1:ncol(train_h.Paul)) {
@@ -340,8 +344,7 @@ The evaluation of model (1) against the train data set is shown below
 p1.Paul <- predict(model.Paul, test_h.Paul)
 d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
 saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
-saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
-saleprice_RMSE.1
+saleprice_RMSE_Paul.1 <- sqrt(saleprice_MSE.1)
 ```
 
 The evaluation of model (2) against the train data set is shown below
@@ -349,10 +352,12 @@ The evaluation of model (2) against the train data set is shown below
 Paul2 <- predict(model.Paul2, test_h.Paul)
 dPaul.p2 <- data.frame(Paul2, test_h.Paul$saleprice)
 saleprice_MSE.1 <- mean((dPaul.p2[,1]-dPaul.p2[,2])^2, na.rm=TRUE)
-saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
-saleprice_RMSE.1
+saleprice_RMSE_Paul.2 <- sqrt(saleprice_MSE.1)
 ```
 
+```{r removeVarsPaul, echo=FALSE}
+rm(list=setdiff(ls(), c("saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
+```
 
 
 # Principle Component Regression (PCR) - Yesh
@@ -363,7 +368,9 @@ PCR is an application of Principle Component Analysis (PCA) to regression modeli
 ## Model Generation
 
 ```{r dropfactors, echo=FALSE}
+df_train <- read.csv("train_housing.csv", header = TRUE)
 df_train_num <- df_train
+df_test <- read.csv("test_housing.csv", header = TRUE)
 
 for(i in colnames(df_train)){
   if(is.factor( df_train[[i]] )){
@@ -423,6 +430,10 @@ Comparing the 3 Models, we see the following RMSE Values when applying the model
   * Model 3 (24 Component): $`r paste(round(saleprice_RMSE.3))`
 
 Model 2 appears to be the best, as Model 3 risks overfitting for not a much better fit.
+
+```{r deleteAllVarYesh, echo=FALSE}
+rm(list=setdiff(ls(), c("saleprice_RMSE.1", "saleprice_RMSE.2", "saleprice_RMSE.3", "saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
+```
 
 
 # Random Forest Regression - Mike
