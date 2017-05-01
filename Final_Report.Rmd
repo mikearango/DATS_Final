@@ -95,11 +95,9 @@ The cleaned dataset has 2838 observations of 82 variables. This means that we on
 [2]: cite the *Art of Data Science Book* here
 [3]: *Journal of Statistics Education*, Volume 19, Number 3(2011), accessed April 11, 2017 at www.amstat.org/publications/jse/v19n3/decock.pdf
 
-# Regression Model Approach 1 - Jack
+# Exploratory Data Analysis and Ordinary Least Squares Regression
 
-## Model Creation and Evaluation
-
-```{r model preproc}
+```{r model preproc, echo = FALSE}
 # specify actual values in test set for model predictions
 test_y <- df_test[, "saleprice"]
 # convert factors to integers in df
@@ -113,7 +111,7 @@ i <- sapply(df_test, is.factor)
 df_test[i] <- lapply(df_test[i], as.integer)
 ```
 
-We decided to begin our model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit and most intuitively interpretable. The first model we decided to create was an ordinary least squares (OLS) model containing all the predictors in the data set. The results of the model can be seen in the regression output below.
+We decided to begin our post-cleaning analysis and model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit and most intuitively interpretable. The first model we decided to create was an ordinary least squares (OLS) model containing all the predictors in the data set. The results of the model can be seen in the regression output below.
 
 ```{r Full Model}
 # kitchen sink model
@@ -151,6 +149,8 @@ The most simplistic model still explains about 83 percent of the variation in sa
 stargazer(all.model, model.2, model.3, type = "text", style = "apsr")
 ```
 
+## Classical Assumptions of the Ordinary Least Squares Model
+
 From these three simplistic models, we have seen several clues that OLS may not be the best model to predict sale price given the dataset. We hypothesize this is because there are several violations of the classical assumptions of OLS. Ordinary least squares regression models make *five* key assumptions about the data:
 
   1) *Linearity*: There is a linear relationship between the independent variables and the dependent variable
@@ -168,38 +168,37 @@ grid.raster(img)
 
 In addition to the non-linearity between the independent and dependent variables, the regression output above showed that the full rank assumption is not met---as indicated by `NA` values for regression coefficients and very high VIFs. We plotted several graphs to check the assumptions about the the distribution and correlations of the residuals which can be seen in *Figure 3*. The graph of residuals vs. fitted values shows that there is correlation among the residuals as illustrated by the non-linearlity of the *red* trend line. The second grpah in *Figure 3* is a quantile-quantile plot which shows we have reason to believe the distribution of errors may not be approximately normal. While four of the five assumptions are clearly violated, it seems to be the case that exogeneity of the independent variables still holds as the mean of the residuals is approximately equal to zero. 
 
-```{r, fig.cap = "Figure 3: Residual Plots of the Simple OLS Model to Check Error Term Assumptions", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
+```{r fig3, fig.cap = "Figure 3: Residual Plots of the Simple OLS Model to Check Error Term Assumptions", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
 plot(model.3)
 ```
 
 ```{r removeVarsJack, echo=FALSE}
-rm(list=setdiff(ls(), c("RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
+rm(list = setdiff(ls(), c("RMSE.1", "RMSE.2", "RMSE.all")))
 ```
 
-# Regression Model Approach 2
-```{r pfb.intro, echo=FALSE, message=FALSE}
+# A Heuristic Approach to Prediction
+
+```{r pfb.intro, echo=FALSE, message = FALSE}
 train_h.Paul <- read.csv("train_housing.csv", header = TRUE)
 test_h.Paul <- read.csv("test_housing.csv", header = TRUE)
 ```
 
-In this approach to a regression model, we take a systematic approach to generating a regression model used to predict sales prices within the Residential Sales Ames, Iowa dataset. This model serves to better understand the factors that influence sales price and can be considered a form of exploratory data analysis. We first ordered the variables by R^2^ values in relationship to the `salesprice` in order to understand which variables singularly explain the most variance in `saleprice`. 
+In this section, we take a systematic approach to generating a regression model used to predict sales prices of residential properties in Ames, Iowa from 2006 to 2010. This model serves to better understand the factors that influence sales price and can be considered another form of exploratory data analysis. We first sorted the independent variables by their $R^2$ values in a univariate OLS regression with sale price. This was done since we cannot compute the correlation coefficient between a categorical, independent variable and the sale price. By computing the $R^2$ values of high variance predictors, we were able to better understand which variables singularly explain the most variance in sale price. 
 
-```{r pfb.building.ordered.list, warning=FALSE, echo=FALSE}
-df.Paul <- data.frame(Variable = character(ncol(train_h.Paul)), AdjRSquared = numeric(ncol(train_h.Paul)), stringsAsFactors = FALSE)
+```{r pfb.building.ordered.list, warning = FALSE, echo = FALSE}
+# compute and sort by r-squared
+df.Paul <- data.frame(Variable = character(ncol(train_h.Paul)), stringsAsFactors = FALSE)
 for(i in 1:ncol(train_h.Paul)) {
   df.Paul$Variable[i]<- labels(train_h.Paul)[[2]][[i]]
   df.Paul$RSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$r.squared
 }
-
+# show the top 20
 head(df.Paul[order(df.Paul$RSquared,decreasing=TRUE),],20)
 ```
 
+## Analyzing the Correlation Between Residential Sale Price and Neighborhood
 
-## Analysis
-
-### Sales Price and Neighborhood EDA
-
-Based on the order of the variables above, we see that some variables can a greater percentage of the deviation in the saleprice than others. This list suggests that overall quality of the house, neighborhood the house is located, and several other factors are relatively important. We can see from the graph below that `saleprice` varies widely across `neighborhood`, which demonstrate the real estate adage of "location, location, location."
+Based on the order of the variables above, we see that some variables explain much more variance in the sale price. than others. This list suggests that overall quality of the house, neighborhood the house is located, and several other factors are relatively important. We can see from the graph below that `saleprice` varies widely across `neighborhood`, which demonstrate the real estate adage of "location, location, location." 
 
 ```{r pfb.neighborhood, echo=FALSE}
 train_h.Paul$neighborhood <- factor(train_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
