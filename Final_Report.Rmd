@@ -205,7 +205,7 @@ train_h.Paul$neighborhood <- factor(train_h.Paul$neighborhood, levels = c("Meado
 test_h.Paul$neighborhood <- factor(test_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
 ```
 
-```{r fig.cap = "Figure 4: Boxplot of Sale Price by Neighborhood", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
+```{r paul neighbhd fig, fig.cap = "Figure 4: Boxplot of Sale Price by Neighborhood", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
 ggplot(train_h.Paul, aes(x = neighborhood, y = saleprice)) + 
   geom_boxplot(fill = "#81AC9B") +
   theme(axis.text.x = element_text(angle = 90, size = 8), legend.position = "none") + 
@@ -285,7 +285,7 @@ From these two models, we can observe that the overall quality of a house is sig
 
 ### Application of Model
 
-Using these multivariate OLS regression models to predict sale price in the test data results in fairly low RMSE values. These results can be seen in *Table 3* below. However, these models are likely not strong performers for prediction because of high multicollinearity between the independent variables in the mode. For example, `overall.qual` will be highly correlated with `bsmt.qual` and `exter.qual`. In addition, the neighborhoods with higher prices may be highly correlated with `overall.qual`, `bsmt.qual`, and `exter.qual`. The more important application of these models is to develop an understanding for the variables that influence `saleprice`. Models 1 and 2 demonstrate the significance of `neighborhood`, `overall.qual`, `bsmt.qual`, `total.bsmt.sf`, `gr.liv.area`, `exter.qual`, `kitchen.qual`, `garage.area`, `garage.finish`, `fireplace.qual`, `yrs.since.remod`, and `ln.lot.area` on saleprice.
+Using these multivariate OLS regression models to predict sale price in the test data results in fairly low RMSE values. These results can be seen in *Table 3* below. However, these models are likely not strong performers for prediction because of high multicollinearity between the independent variables in the mode. For example, `overall.qual` will be highly correlated with `bsmt.qual` and `exter.qual`. In addition, the neighborhoods with higher prices may be highly correlated with `overall.qual`, `bsmt.qual`, and `exter.qual`. We already saw in the *Exploratory Data Analysis and Ordinary Least Squares Regression* section that OLS is not the best model for predicting sale price given our housing data as many classical assumptions are violated. Nevertheless, the models are important in that they help us to develop an understanding of the variables that influence sale price.
 
 Model           | Test RMSE
 ----------------|-------------------------
@@ -294,25 +294,21 @@ Model 2         | \$`r paste(round(saleprice_RMSE_Paul.2))`
 
 Table: Table 3: Test RMSE of Heuristic Approach OLS Models
 
-
-
-```{r removeVarsPaul, echo=FALSE}
+```{r removeVarsPaul, echo = FALSE}
 rm(list=setdiff(ls(), c("saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
 ```
 
+# Principal Component Regression
 
-# Principle Component Regression (PCR) - Yesh
-
-PCR is an application of Principle Component Analysis (PCA) to regression modeling. By creating "components," which are linear transformations of the variables in our dataset, multicollinearity can be minimized by using these components in the regression model, rather than the original variables. This can create a better prediction model, with lower risk of overfitting, than a traditional regression model. However, the ability to interpret the coefficients of the model is lost because each component variable is a linear combination of all the variables in the original dataset.
-
+Principal Component Regression (PCR) is an application of Principal Component Analysis (PCA) to regression modeling. By creating *components*---orthogonal transformations of possibly correlated variables into sets of uncorrelated variables---we can reduce the dimensionality of the feature space and minimize correlation between independent variables  by opting to use these components in the regression model, in place of the original variables. This can create a better prediction model, with a lower risk of overfitting, than a traditional OLS regression model. However, interpretability of the estimated regression coefficients is lost as each component variable is an orthogonal transformation of the original variables in the dataset. In this section, we use the PCR method to build a more robust and sound predictive model.
 
 ## Model Generation
 
-```{r dropfactors, echo=FALSE}
+```{r dropfactors, echo = FALSE}
 df_train <- read.csv("train_housing.csv", header = TRUE)
 df_train_num <- df_train
 df_test <- read.csv("test_housing.csv", header = TRUE)
-
+# drop factors
 for(i in colnames(df_train)){
   if(is.factor( df_train[[i]] )){
     df_train_num[[i]] <- NULL
@@ -320,47 +316,45 @@ for(i in colnames(df_train)){
 }
 ```
 
-Because PCR methods work best with numerical data, we first dropped all factor variables from our training dataset, keeping only integer and numerical datatypes. The dataset now contains `r dim(df_train_num)[2]` variables. We then generate a general pcr model using all the variables in the training dataset to predict saleprice.
-
+Because PCR methods work best with numerical data, we decided to drop all factor variables from our training dataset, keeping only integer and numerical datatypes, before running a model. The dataset contains `r dim(df_train_num)[2]` variables after dropping factors. Then, we generated a kitchen sink PCR model using all the remaining variables in the training dataset to predict saleprice. 
 
 ```{r modelGeneration}
-pcr.saleprice <- pcr(saleprice ~ ., data=df_train_num, scale=TRUE, validation="CV")
+pcr.saleprice <- pcr(saleprice ~ ., data=df_train_num, scale = TRUE, validation = "CV")
 ```
 
 ## Model Selection
 
-In order to select the number of components we want to use for prediction, we examine the RMSE vs Number of Components Plot:
-```{r rsmeplot}
+After fitting a kitchen sink PCR model to get a baseline evaluation of how the model fits to the data, we performed feature selection. In order to select the number of components we want to use for prediction, we examined the RMSE as we allowed the number of principal components used in the model. The results can be seen in *Figure 5* below. From the regression summary and the validated RMSE plot (*Figure 5*), we see large increases in the explained percentage of variancein sale price and decreases in RMSE are observed from 6 to 7 components, and again from 23 to 24. Thus, we assessed models with 1, 7, and 24 components.  
+
+```{r validation components, fig.cap = "Figure 5: Boxplot of Sale Price by Neighborhood", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
 validationplot(pcr.saleprice)
 ```
 
-```{r pcrsummary, include=FALSE}
+```{r pcrsummary, include = FALSE}
 summary(pcr.saleprice)
 ```
 
-From the summary and the RSME plot, large jumps in the % of variance explained and RSME are observed from 6 to 7 components, and again from 23 to 24. Three Models will be assessed with 1, 7, and 24 components.
-
 ## Model Validation
 
-The table below compares the predicted values to the actual values in the test dataset.
+The regression output below compares the summary statistics of the predicted values in the PCR model to the actual values in the test dataset.
 
-```{r modelvaldiation, echo=FALSE}
-
+```{r modelvaldiation, echo = FALSE}
+# predict RMSE pcr1
 pcr.predict.1 <- predict(pcr.saleprice, df_test, ncomp=1)
 df_predict.1 <- data.frame(pcr.predict.1, df_test$saleprice)
 saleprice_MSE.1 <- mean((df_predict.1[,1]-df_predict.1[,2])^2)
 saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
-
+# predict RMSE pcr2
 pcr.predict.2 <- predict(pcr.saleprice, df_test, ncomp=7)
 df_predict.2 <- data.frame(pcr.predict.2, df_test$saleprice)
 saleprice_MSE.2 <- mean((df_predict.2[,1]-df_predict.2[,2])^2)
 saleprice_RMSE.2 <- sqrt(saleprice_MSE.2)
-
+# predict RMSE pcr3
 pcr.predict.3 <- predict(pcr.saleprice, df_test, ncomp=24)
 df_predict.3 <- data.frame(pcr.predict.3, df_test$saleprice)
 saleprice_MSE.3 <- mean((df_predict.3[,1]-df_predict.3[,2])^2)
 saleprice_RMSE.3 <- sqrt(saleprice_MSE.3)
-
+# regression output to table
 stargazer(df_predict.1, df_predict.2, df_predict.3, type="text", header=FALSE)
 ```
 
@@ -370,14 +364,13 @@ Comparing the 3 Models, we see the following RMSE Values when applying the model
   * Model 2 (7 Component): $`r paste(round(saleprice_RMSE.2))`
   * Model 3 (24 Component): $`r paste(round(saleprice_RMSE.3))`
 
-Model 2 appears to be the best, as Model 3 risks overfitting for not a much better fit.
+Model 2 appears to be the best, as Model 3 risks overfitting in exchange for a marginally improved RMSE. This is a clear example of the bias-variance tradeoff in practice. 
 
 ```{r deleteAllVarYesh, echo=FALSE}
 rm(list=setdiff(ls(), c("saleprice_RMSE.1", "saleprice_RMSE.2", "saleprice_RMSE.3", "saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
 ```
 
-
-# Random Forest Regression - Mike
+# Random Forest Regression, Elastic Net Regularization, and Other Complex Models
 
 ## Data Pre-processing
 
@@ -439,14 +432,14 @@ modelrf1 <- train(
 print(modelrf1)
 ```
 
-We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). *Figure X* shows the optimal number of predictors at each split (mtry) was 62. Using the optimal number of predictors, the model yields a training RMSE of $46347.72 and the importance of the top 20 predictor variables is shown in *Figure Y*.  
+We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). *Figure 6* shows the optimal number of predictors at each split (mtry) was 62. Using the optimal number of predictors, the model yields a training RMSE of $46347.72 and the importance of the top 20 predictor variables is shown in *Figure 7*.  
 
-```{r plotrf1, fig.cap = "Figure X: Training RMSE of Random Forest by Number of Predictors (mtry)", fig.align = 'center', echo = FALSE}
+```{r plotrf1, fig.cap = "Figure 6: Training RMSE of Random Forest by Number of Predictors (mtry)", fig.align = 'center', echo = FALSE}
 # plot the number of randomly selected predictors
 plot(modelrf1, xlab = "Number of Randomly Selected Predictors")
 ```
 
-```{r plotrf2, fig.cap = "Figure Y: Top 20 Independent Variables by Importance", fig.align = 'center', echo = FALSE}
+```{r plotrf2, fig.cap = "Figure 7: Top 20 Independent Variables by Importance", fig.align = 'center', echo = FALSE}
 # plot 20 most important predictors of modelrf1
 plot(varImp(modelrf1), top = 20)
 ```
@@ -524,9 +517,9 @@ enet1 <- train(
 print(enet1)
 ```
 
-For the first model, we decided to run a grid search for the optimal *mixing* parameter while holding the penalty factor constant. *Figure Z* shows the optimal value of $\alpha$ was one for the grid search we ran. This implies that pure ridge regression will minimize the RMSE of our predictions for the regularization models. Note that we only run a grid search for $0 \leq \alpha \leq 1$ by steps of 0.1. That is, it is entirely possible that $\alpha_{optimal} \in (0.9,1)$ but it would have been more computationally expensive to perform a more robust grid search. Ridge regression results in the lowest training RMSE of the complex models ($44758.84), but this is before we even try to find the RMSE minimizing value of the regularization parameter. 
+For the first model, we decided to run a grid search for the optimal *mixing* parameter while holding the penalty factor constant. *Figure 8* shows the optimal value of $\alpha$ was one for the grid search we ran. This implies that pure ridge regression will minimize the RMSE of our predictions for the regularization models. Note that we only run a grid search for $0 \leq \alpha \leq 1$ by steps of 0.1. That is, it is entirely possible that $\alpha_{optimal} \in (0.9,1)$ but it would have been more computationally expensive to perform a more robust grid search. Ridge regression results in the lowest training RMSE of the complex models ($44758.84), but this is before we even try to find the RMSE minimizing value of the regularization parameter. 
 
-```{r enet plot, fig.cap = "Figure Z: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
+```{r enet plot, fig.cap = "Figure 8: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
 # plot RMSE vs alpha
 plot(enet1)
 ```
@@ -553,9 +546,9 @@ ridge <- train(
 print(ridge)
 ```
 
-The regression results show that the optimal model drops our training RMSE down to \$41864.39 which is significantly better than before we performed a grid search for the regularization parameter. Below, *Figure A* shows that $\lambda_{optimal} = 7000$. We can assume that we have at least found a local minimum for $\lambda_{optimal}$ as the figure shows a U-shaped curve for the regularization parameter and the slope of the curve is equal to zero at $\lambda = 7000$. 
+The regression results show that the optimal model drops our training RMSE down to \$41864.39 which is significantly better than before we performed a grid search for the regularization parameter. Below, *Figure 9* shows that $\lambda_{optimal} = 7000$. We can assume that we have at least found a local minimum for $\lambda_{optimal}$ as the figure shows a U-shaped curve for the regularization parameter and the slope of the curve is equal to zero at $\lambda = 7000$. 
 
-```{r ridge plot, fig.cap = "Figure Z: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
+```{r ridge plot, fig.cap = "Figure 9: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
 # plot RMSE vs lambda
 plot(ridge)
 ```
@@ -581,9 +574,9 @@ knn1 <- train(
 print(knn1)
 ```
 
-Most of the literature uses a value of *k* between three and nine, but we ran a grid search between five and nine for the optimal value of *k*.The training RMSE for *k*-nearest neighbor regression was \$47430.67 which is higher than most of our models. *Figure B* shows that $k_{max} = 7$ is the value of *k* that optimizes the results of the model on the training data. 
+Most of the literature uses a value of *k* between three and nine, but we ran a grid search between five and nine for the optimal value of *k*.The training RMSE for *k*-nearest neighbor regression was \$47430.67 which is higher than most of our models. *Figure 10* shows that $k_{max} = 7$ is the value of *k* that optimizes the results of the model on the training data. 
 
-```{r knn plot, fig.cap = "Figure B: RMSE for Varying Numbers of Maximum Neighbors", fig.align = 'center', echo = FALSE}
+```{r knn plot, fig.cap = "Figure 10: RMSE for Varying Numbers of Maximum Neighbors", fig.align = 'center', echo = FALSE}
 plot(knn1, xlab = "Maximum Number of Neighbors")
 ```
 
@@ -609,9 +602,9 @@ glmboost1 <- train(
 print(glmboost1)
 ```
 
-The gradient boosted tree gave us a marginally lower RMSE ($41693.69) than the optimized ridge regression model. *Figure C* shows the number optimal number of boosting iterations for this model was 40. It would be ideal if the gradient boosted tree model ends up having the lowest RMSE on the training data as well since the coefficients are easily interpretable just as in OLS regression. 
+The gradient boosted tree gave us a marginally lower RMSE ($41693.69) than the optimized ridge regression model. *Figure 11* shows the number optimal number of boosting iterations for this model was 40. It would be ideal if the gradient boosted tree model ends up having the lowest RMSE on the training data as well since the coefficients are easily interpretable just as in OLS regression. 
 
-```{r glmplot, fig.cap = "Figure C: RMSE of Gradient Boosted Model at Different Numbers of Boosting Iterations", fig.align = 'center', echo = FALSE}
+```{r glmplot, fig.cap = "Figure 11: RMSE of Gradient Boosted Model at Different Numbers of Boosting Iterations", fig.align = 'center', echo = FALSE}
 # plot RMSE vs alpha
 plot(glmboost1, xlab = "Number of Boosting Iterations")
 ```
@@ -619,7 +612,7 @@ plot(glmboost1, xlab = "Number of Boosting Iterations")
 
 ## Model Comparison
 
-To compare models in which we cross-validated on the same folds, we decided make a list of all the models and their results. Then we used the `resamples` function in the `caret` package to take bootstrap samples of the model results. This allows us to make statistical inferences about the performance differences between the models. Below, *Figure D* shows a box-and-whisker plot of the RMSE of the bootstrap samples of our models and *Figure E* shows a box-and-whisker plot of the $R^2$ of the bootstrap samples. 
+To compare models in which we cross-validated on the same folds, we decided make a list of all the models and their results. Then we used the `resamples` function in the `caret` package to take bootstrap samples of the model results. This allows us to make statistical inferences about the performance differences between the models. Below, *Figure 12* shows a box-and-whisker plot of the RMSE of the bootstrap samples of our models and *Figure 13* shows a box-and-whisker plot of the $R^2$ of the bootstrap samples. 
 
 ```{r model list, echo = FALSE}
 # Create model_list
@@ -631,12 +624,12 @@ resamps <- resamples(model_list)
 summary(resamps)
 ```
 
-```{r rmse models, fig.cap = "Figure D: RMSE of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
+```{r rmse models, fig.cap = "Figure 12: RMSE of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
 bwplot(resamps, metric = "RMSE")
 ```
 
 
-```{r r2models, fig.cap = "Figure E: R-squared of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
+```{r r2models, fig.cap = "Figure 13: R-squared of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
 bwplot(resamps, metric = "Rsquared")
 ```
 
@@ -672,7 +665,7 @@ RMSE_knn <- rmse(pred_knn, test_y)
 RMSE_glmboost <- rmse(pred_glmboost, test_y)
 ```
 
-We calculated the predicted values of each of our models on the test dataset and calculated the RMSE of each. The results can be seen in *Table 2* below. 
+We calculated the predicted values of each of our models on the test dataset and calculated the RMSE of each. The results can be seen in *Table 4* below. 
 
 Model Name      | Test RMSE
 ----------------|-------------------------
@@ -684,5 +677,5 @@ ridge           | $`r round(RMSE_ridge, 2)`
 k-NN            | $`r round(RMSE_knn, 2)` 
 glmboost        | $`r round(RMSE_glmboost, 2)`
 
-Table: Table 2: Test RMSE of Machine Learning Models
+Table: Table 4: Test RMSE of Machine Learning Models
 
