@@ -703,14 +703,14 @@ Table: Table 4: Test RMSE of Machine Learning Models
 
 &nbsp;
 
-From Table 4, we can see that the rf1 and rf2 are likely the strongest and most reliable prediction models, as they much lower RMSE values than the other models. However, we do not use rf2 as it is merely the same model as rf1. Model rf2 was the same as the first in that there were no zero variance predictors to remove and a difference grid search was run. It would be improper to cherry-pick it as our ideal model for this reason. 
+From *Table 4*, we can see that the *rf1* and *rf2* are likely the strongest and most reliable prediction models, as they much lower RMSE values than the other models. However, we do not use *rf2* as it is merely the same model as *rf1*. Model *rf2* was the same as the first in that there were no zero variance predictors to remove and a difference grid search was run. It would be improper to cherry-pick it as our ideal model for this reason. 
 
 
 # Example Predictions
 
 ## Prediction on test data
 
-Table 5 demonstrates the ability of our model to predict the saleprice, given specific variables from the test data set. Table 5 shows the predicted values for median and standard deviation are close to the median of the actual dataset. 
+*Table 5* demonstrates the ability of our model to predict the sale price, given specific variables from the test data set. *Table 5* shows the predicted values for median and standard deviation are close to the median of the actual dataset. 
 
 ```{r predict_rf1_rf2, echo=FALSE, results='asis'}
 df_test <- read.csv("test_housing.csv", header = TRUE)
@@ -743,7 +743,7 @@ Our model is primarily constrained by external validity. The training data is li
 
 # Conclusion
 
-We attempted to several approaches for modeling. We found that OLS linear regression models failed to match all the assumptions needed for proper interpretation. However, a regression model does allow us to understand that some variables are important to sale price, such as overall house quality and neighborhood. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for prediction ability. The most robust model was the random forest model (modelrf1, RMSE: \$`r round(RMSE_rf1, 2)`).
+We attempted several approaches for modeling. We found that OLS linear regression models failed to meet all the assumptions needed for proper implementation---gross violations of the classical assumptions result in biased coefficient estimates. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for the sake of a smaller, average prediction error. The most robust model was the random forest model (modelrf1, RMSE: \$`r round(RMSE_rf1, 2)`).
 
 
 # References
