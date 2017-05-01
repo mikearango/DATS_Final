@@ -86,7 +86,7 @@ df[i] <- lapply(df[i], as.integer)
 i <- sapply(df_train, is.factor)
 df_train[i] <- lapply(df_train[i], as.integer)
 
-i <- sapply(test, is.factor)
+i <- sapply(df_test, is.factor)
 df_test[i] <- lapply(df_test[i], as.integer)
 ```
 
