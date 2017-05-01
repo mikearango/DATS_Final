@@ -649,10 +649,29 @@ plot(glmboost1)
 
 The gradient boosted tree gave us a marginally lower RMSE (\$`r min(glmboost1$results$RMSE)`) than the optimized ridge regression model. *Figure C* shows the number optimal number of boosting iterations for this model was 40. It would be ideal if the gradient boosted tree model ends up having the lowest RMSE on the training data as well since the coefficients are easily interpretable just as in OLS regression. 
 
+## Model Comparison
+
+To compare models in which we cross-validated on the same folds, we decided make a list of all the models and their results. Then we used the `resamples` function in the `caret` package to take bootstrap samples of the model results. This allows us to make statistical inferences about the performance differences between the models. Below, *Figure D* shows a box-and-whisker plot of the RMSE of the bootstrap samples of our models and *Figure E* shows a box-and-whisker plot of the $R^2$ of the bootstrap samples. 
+
+```{r model list, eval = FALSE}
+# Create model_list
+model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, `elastic net` = enet1, 
+                   ridge = ridge, knn = knn1, glmboost = glmboost1)
+# Pass model_list to resamples(): resamples
+resamples <- resamples(model_list)
+# Summarize the results
+summary(resamples)
+```
+
+```{r rmse models, fig.cap = "Figure D: RMSE of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
+bwplot(resamples, metric = "RMSE")
+```
 
 
+```{r r2models, fig.cap = "Figure E: R-squared of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
+bwplot(resamples, metric = "Rsquared")
+```
+
+## Testing
 
 
-
-
-*insert table of models and RMSE here* 
