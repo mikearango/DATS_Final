@@ -353,7 +353,7 @@ saleprice_RMSE_Paul.2 <- sqrt(saleprice_MSE.1)
 ```
 
 ```{r removeVarsPaul, echo=FALSE}
-rm(list=setdiff(ls(), c("saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2")))
+rm(list=setdiff(ls(), c("saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
 ```
 
 
@@ -429,7 +429,7 @@ Comparing the 3 Models, we see the following RMSE Values when applying the model
 Model 2 appears to be the best, as Model 3 risks overfitting for not a much better fit.
 
 ```{r deleteAllVarYesh, echo=FALSE}
-rm(list=setdiff(ls(), c("saleprice_RMSE.1", "saleprice_RMSE.2", "saleprice_RMSE.3")))
+rm(list=setdiff(ls(), c("saleprice_RMSE.1", "saleprice_RMSE.2", "saleprice_RMSE.3", "saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
 ```
 
 
