@@ -33,6 +33,9 @@ library(caret)
 library(png)
 library(grid)
 library(lattice)
+library(e1071)
+library(ranger)
+
 options(scipen = 999)
 ```
 
@@ -242,7 +245,7 @@ train_h.Paul$fireplace.qu = as.numeric(factor(train_h.Paul$fireplace.qu, levels 
 
 In order to best understand the influence of variables that individually explain relatively large portions of variance in sale price, the following multivariate OLS regression models were run:
 
-```{r pfb.model1, echo = FALSE}
+```{r pfb.model1, echo = FALSE, results='asis'}
 #model 1
 model.Paul<-lm(saleprice~neighborhood +  
     bsmt.qual +  
@@ -268,7 +271,7 @@ model.Paul2<-lm(saleprice~overall.qual +
     fireplace.qu +  
     yrs.since.remod , data = train_h.Paul )
 # regression output as table
-stargazer(model.Paul, model.Paul2, type="text", style="apsr")
+stargazer(model.Paul, model.Paul2, type="html", style="apsr")
 ```
 
 ```{r pfb.testmodel1, echo = FALSE}
@@ -350,7 +353,9 @@ From the summary and the RSME plot, large jumps in the % of variance explained a
 
 The table below compares the predicted values to the actual values in the test dataset.
 
-```{r modelvaldiation, echo=FALSE}
+
+
+```{r modelvaldiation, echo=FALSE, results='asis'}
 
 pcr.predict.1 <- predict(pcr.saleprice, df_test, ncomp=1)
 df_predict.1 <- data.frame(pcr.predict.1, df_test$saleprice)
@@ -367,8 +372,15 @@ df_predict.3 <- data.frame(pcr.predict.3, df_test$saleprice)
 saleprice_MSE.3 <- mean((df_predict.3[,1]-df_predict.3[,2])^2)
 saleprice_RMSE.3 <- sqrt(saleprice_MSE.3)
 
-stargazer(df_predict.1, df_predict.2, df_predict.3, type="text", header=FALSE)
+
+output_df <- data.frame(df_predict.1$df_test.saleprice, df_predict.1$saleprice.1.comps, df_predict.2$saleprice.7.comps, df_predict.3$saleprice.24.comps)
+
+output_df <- dplyr::rename(output_df, test_data=df_predict.1.df_test.saleprice, Prediction.1.Component=df_predict.1.saleprice.1.comps, Prediction.7.Component=df_predict.2.saleprice.7.comps, Prediction.24.Component=df_predict.3.saleprice.24.comps)
+
+stargazer(output_df, type="html", header=FALSE)
 ```
+
+
 
 Comparing the 3 Models, we see the following RMSE Values when applying the model to the test dataset:
 
