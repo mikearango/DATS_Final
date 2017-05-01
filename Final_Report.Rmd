@@ -710,32 +710,30 @@ From Table 4, we can see that the rf1 and rf2 are likely the strongest and most 
 
 ## Prediction on test data
 
-Table 5 demonstrates the ability of our model to predict the saleprice, given specific variables from the test data set. Table 5 shows the predicted values for median and mode are close to the median of the actual dataset. 
+Table 5 demonstrates the ability of our model to predict the saleprice, given specific variables from the test data set. Table 5 shows the predicted values for median and standard deviation are close to the median of the actual dataset. 
 
 ```{r predict_rf1_rf2, echo=FALSE, results='asis'}
 df_test <- read.csv("test_housing.csv", header = TRUE)
 
-prediction_rf1_rf2_test <- data.frame(df_test$saleprice, pred_rf1, pred_rf2)
+prediction_rf1_test <- data.frame(df_test$saleprice, pred_rf1)
 
-prediction_rf1_rf2_test <- dplyr::rename(prediction_rf1_rf2_test, Actual_SalePrice=df_test.saleprice, Prediction_RF1_SalePrice=pred_rf1, Prediction_RF2_SalePrice=pred_rf2)
+prediction_rf1_test <- dplyr::rename(prediction_rf1_test, Actual_SalePrice=df_test.saleprice, modelrf1_SalePrice=pred_rf1)
 # output to table
-stargazer(prediction_rf1_rf2_test, type="html", title="Table 5: Prediction Results", header=FALSE, summary.stat=c("n","median", "sd", "min", "max"), digits=2)
+stargazer(prediction_rf1_test, type="html", title="Table 5: Prediction Results", header=FALSE, summary.stat=c("n","median", "sd", "min", "max"), digits=2)
 ```
 
 ## Prediction for individual house
 
-Using the following input paramters (from the 1st observation of the test data), the rf1 model predicts the sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`, and rf2 model predicts sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`. The true price of this house is $`r round(test_y[1,], 2)`.
+Using the following input paramters (from the 1st observation of the test data), the modelrf1 predicts the sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`. The true price of this house is $`r round(test_y[1,], 2)`.
 
-```{r example1, echo=FALSE, results='asis'}
+```{r example1, echo=FALSE}
 test_x[1,]
 
 update_test_x_1 <- test_x[1,]
 update_test_x_1$garage.cars <- 3
 ```
 
-## Example For Changing One Feature - Garage
-
-If we change the garage size from a `r test_x[1,'garage.cars']` car garage to a 3 car garage, model rf1 predicts price to increase to \$`r round(predict(modelrf1, update_test_x_1),2)` (a `r round( (predict(modelrf1, update_test_x_1) - predict(modelrf1, test_x[1,]) )/predict(modelrf1, test_x[1,]),4)*100`% change in sale price). Model rf2 predicts price to increase to \$`r round(predict(modelrf2, update_test_x_1),2)` (a `r round( (predict(modelrf2, update_test_x_1) - predict(modelrf2, test_x[1,]) )/predict(modelrf2, test_x[1,]),4)*100`% change in sale price).
+If we change the garage size from a `r test_x[1,'garage.cars']` car garage to a 3 car garage, model rf1 predicts price to increase to \$`r round(predict(modelrf1, update_test_x_1),2)` (a `r round( (predict(modelrf1, update_test_x_1) - predict(modelrf1, test_x[1,]) )/predict(modelrf1, test_x[1,]),4)*100`% change in sale price).
 
 
 # Limitations
@@ -745,7 +743,7 @@ These models are primarily limited by external validity. The data is limited to 
 
 # Conclusion
 
-We attempted to several approaches for modeling. We found that OLS linear regression models failed to match all the assumptions needed for proper interpretations. However, a regression model does allow us to understand some factors that are important to sale price, such as overall house quality and neighborhood. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for prediction ability. The most robust models were the random forest models (rf1, RMSE: \$`r round(RMSE_rf1, 2)` and rf2, RMSE: \$`r round(RMSE_rf1, 2)`).
+We attempted to several approaches for modeling. We found that OLS linear regression models failed to match all the assumptions needed for proper interpretations. However, a regression model does allow us to understand some factors that are important to sale price, such as overall house quality and neighborhood. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for prediction ability. The most robust models was the random forest model (modelrf1, RMSE: \$`r round(RMSE_rf1, 2)`).
 
 
 # References
