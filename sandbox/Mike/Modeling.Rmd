@@ -104,6 +104,8 @@ print(modelrf2)
 print(min(modelrf2$results$RMSE))
 # plot RMSE 
 plot(modelrf2)
+# test
+varImp(modelrf2)
 ```
 
 This actually made the model slightly worse.  To decrease dimensionality, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis before feeding the data into the random forest model. 

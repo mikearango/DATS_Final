@@ -17,6 +17,9 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("ranger")
 # install.packages("png")
 # install.packages("grid")
+# install.packages("glmnet")
+# install.packages("kknn")
+# install.packages("mboost")
 library(tidyverse)
 library(stargazer)
 library(pls)
@@ -440,15 +443,13 @@ myControl = trainControl(verboseIter = FALSE, index = myFolds)
 
 ## Modeling
 
-This section deals with some slightly more complicated prediction models. We ran a few random forest regression models, followed by elastic net regularization, then some linear step-wise selection regression models, and finished off with some slightly more specialized models (k-NN regression and gradient boosting). 
+This section deals with some slightly more complicated prediction models. We ran a few random forest regression models, followed by two elastic net regularization models, and finished off with two more specialized models (*k*-NN regression and gradient boosting). 
 
 ### Random Forest
 
 Random forests are aggregations of several decision tree models. A single decision tree is very fast but not too accurate. The earlier comparisons between the decision tree and a simple linear model illustrated this. While random forests take longer to run, they are very accurate and robust to overfitting. Random forests improve accuracy by fitting many trees to a bootstrap sample of the original dataset. This is a technique called *bootstrap aggregation* or *bagging*. In addition to making trees by bagging, "random forests change how the classification or regression trees are constructed. In standard trees, each node is split using the best split among all variables. In a random forest, each node is split using the best among a subset of predictors randomly chosen at that node."[4] 
 
 [4]:http://www.bios.unc.edu/~dzeng/BIOS740/randomforest.pdf 
-
-We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). The grid search showed the optimal number of predictors at each split (mtry) was 62. Using the optimal number of predictors, the model yields a training RMSE of \$`r print(min(modelrf1$results[['RMSE']]))`  
 
 ```{r rf1}
 set.seed(12)
@@ -460,6 +461,7 @@ modelrf1 <- train(
   train_mike,
   # fast random forest
   method = "ranger",
+  importance = "impurity",
   # grid search for optimal number of columns to randomly sample at each split
   tuneGrid = data.frame(mtry = seq(2, 80, 2)),
   # set trainCrol as our custom object
@@ -469,15 +471,22 @@ modelrf1 <- train(
 print(modelrf1)
 ```
 
-```{r plot1, fig.cap = "Figure X: Training RMSE of Random Forest by Number of Predictors (mtry)", fig.align = 'center', echo = FALSE}
+We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). *Figure X* shows the optimal number of predictors at each split (mtry) was 62. Using the optimal number of predictors, the model yields a training RMSE of \$`r (min(modelrf1$results[['RMSE']]))` and the importance of the top 20 predictor variables is shown in *Figure Y*.  
+
+```{r plotrf1, fig.cap = "Figure X: Training RMSE of Random Forest by Number of Predictors (mtry)", fig.align = 'center', echo = FALSE}
 # plot the number of randomly selected predictors
 plot(modelrf1)
+```
+
+```{r plotrf2, fig.cap = "Figure Y: Top 20 Independent Variables by Importance", fig.align = 'center', echo = FALSE}
+# plot 20 most important predictors of modelrf1
+plot(varImp(modelrf1), top = 20)
 ```
 
 Next, we decided to remove the zero variance predictors before running the next random forest regression to see if this results in a lower training RMSE. Since we removed zero variance predictors, the number of variables in the dataset decreased. Thus, we had to run a new grid search when we ran the second random forest model. But, it's worth noting that the regression output shows no variables were actually removed after pre-processing.
 Regardless, these modifications made the model slightly worse and increased the RMSE to $46327.18. We hypothesize that this is because we ran a smaller grid search since we would expect a handful of variables to be zero variance predictors in a dataset this large.  
 
-```{r rf2, echo = FALSE}
+```{r rf2, eval = FALSE}
 set.seed(1760)
 # train the model 
 modelrf2 <- train(
@@ -489,14 +498,14 @@ modelrf2 <- train(
   method = "ranger",
   # grid search for optimal number of columns to randomly sample at each split
   tuneGrid = data.frame(mtry = seq(2, 40, 2)),
-  # preprocess by removing sero variance predictors
+  # preprocess by removing zero variance predictors
   preProcess = "zv",
   # set trainCrol as our custom object
   trControl = myControl
 )
 ```
 
-In an effort to reduce the dimensionality of the dataset, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis (PCA) before feeding the data into the random forest model. 
+In an effort to reduce the dimensionality of the dataset, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis (PCA) before feeding the data into the third random forest model. 
 
 ```{r rf3, eval = FALSE}
 set.seed(17)
@@ -519,7 +528,127 @@ modelrf3 <- train(
 print(modelrf3)
 ```
 
-Surprisingly, this model had the highest training RMSE of the three models run to this point (\$`r print(min(modelrf3$results$RMSE)`). The regression output shows that 19 variables were removed because they were near-zero variance predictors and the remaining 62 were centered, scaled, and subject to a PCA. This model also explained the least amount of variation in sale price. 
+Surprisingly, this model had the highest training RMSE of the three models run to this point (\$`r (min(modelrf3$results$RMSE)`). The regression output shows that 19 variables were removed because they were near-zero variance predictors and the remaining 62 were centered, scaled, and subject to a PCA. This model also explained the least amount of variation in sale price. 
 
 ## Elastic Net Regularization 
 
+Elastic net regularization is a mixed method model that is closely linked to lasso (least absolute shrinkage and selection operator) and ridge regression. Lasso and ridge regression are two very common ways of dealing with collinearity of variables and can be seen as a subsitute to stepwsie regression and dimensionality reduction techniques. However, each method deals with collinearity differently. Lasso regression penalizes the number of non-zero coefficients whereas ridge regression penalizes the absolute magnitude of the coefficients. Elastic net regularization is a combination of the two models with a parameter $\alpha$, bounded between zero and one, that is referred to as the *mixing* parameter---0 is pure-lasso regression and 1 is pure-ridge regression. Elastic net also has a $\lambda$ paramater which ranges from zero to infinity which is referred to as the *regularization*---this parameter represents the size of the penalty and higher values of lambda correspond to simpler models.[5]
+
+[5]: https://www.mathworks.com/help/stats/lasso-and-elastic-net.html
+
+```{r enet1}
+set.seed(500)
+# Train glmnet with custom trainControl and tuning: model
+enet1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  # set grid search parameters for alpha
+  tuneGrid = expand.grid(alpha = seq(0,1,0.1), 
+                         lambda = seq(0.0001, 1, 10)),
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmnet",
+  # trainControl
+  trControl = myControl
+)
+# Print model output to console
+print(enet1)
+```
+
+For the first model, we decided to run a grid search for the optimal *mixing* parameter while holding the penalty factor constant. *Figure Z* shows the optimal value of $\alpha$ was one for the grid search we ran. This implies that pure ridge regression will minimize the RMSE of our predictions for the regularization models. Note that we only run a grid search for $0 \leq \alpha \leq 1$ by steps of 0.1. That is, it is entirely possible that $\alpha_{optimal} \in (0.9,1)$ but it would have been more computationally expensive to perform a more robust grid search. Ridge regression results in the lowest training RMSE of the complex models (\$`r min(enet1$results$RMSE)`), but this is before we even try to find the RMSE minimizing value of the regularization parameter. 
+
+```{r enet plot, fig.cap = "Figure Z: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
+# plot RMSE vs alpha
+plot(enet1)
+```
+
+Since we found our optimal value of the mixing parameter to be one, we run a pure-ridge regression model as the second regularization model. So, holding $\alpha$ constant and equal to one, we performed a grid search for the RMSE minimizing value of the regularization parameter. Again, a very robust grid search would be computationally expensive, so we performed a grid search for $\lambda \in [0,1000]$ by steps of 1000. 
+
+```{r ridge}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+ridge <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  # set grid search parameters for lambda
+  tuneGrid = expand.grid(alpha = 1, 
+                         lambda = (0:15) * 1000),
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmnet",
+  # trainControl
+  trControl = myControl
+)
+# Print model output to console
+print(ridge)
+```
+
+The regression results show that the optimal model drops our training RMSE down to \$`r min(ridge$results$RMSE)` which is significantly better than before we performed a grid search for the regularization parameter. Below, *Figure A* shows that $\lambda_{optimal} = 7000$. We can assume that we have at least found a local minimum for $\lambda_{optimal}$ as the figure shows a U-shaped curve for the regularization parameter and the slope of the curve is equal to zero at $\lambda = 7000$. 
+
+```{r ridge plot, fig.cap = "Figure Z: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
+# plot RMSE vs lambda
+plot(ridge)
+```
+
+## k-Nearest Neighbors Regression and Gradient Boosting
+
+The *k*-nearest neighbors algorithm is a non-parametric method that can be used for classification or regression. We take the *k* closest examples to the point we are trying to predict via a given distance metric (euclidean, manhattan, minkowski, etc.) and fit the best line between the neighbors. This process is repeated for each point in the model, so it is a technique that is very computationally expensive if used on a larger dataset. It is important to find the right value of *k* as we can easily overfit by picking a *k* that is too low or underfit by picking a *k* that is too high. 
+
+```{r knn}
+set.seed(579)
+# Train glmnet with custom trainControl and tuning: model
+knn1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  # knn regression
+  method = "kknn",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(knn1)
+```
+
+Most of the literature uses a value of *k* between three and nine, but we ran a grid search between five and nine for the optimal value of *k*.The training RMSE for *k*-nearest neighbor regression was \$`r min(knn1$results$RMSE)` which is higher than most of our models. *Figure B* shows that $k_{max} = 7$ is the value of *k* that optimizes the results of the model on the training data. 
+
+```{r knn plot, fig.cap = "Figure B: RMSE for Varying Numbers of Maximum Neighbors", fig.align = 'center', echo = FALSE}
+plot(knn1)
+```
+
+The last model we decided to run is a gradient boosting linear model that uses penalized least squares regression to optimize the RMSE of our model on the training data. This model starts by fitting an additive model in a forward stepwise manner (similar to a decision tree) and uses the concept of *gradient descent*---minimizing a function by moving in the opposite direction of the gradient---to add new inputs to the model. For the boosting model, we decided not to *prune* our boosted trees and to find the optimal number of boosting iterations (mstop) between between 10 and 150 by increments of 10. 
+
+```{r glmboost}
+glmBoostGrid1 = expand.grid(mstop = seq(10, 150, 10),
+                           prune = c("no"))
+set.seed(1254)
+# Train glmnet with custom trainControl and tuning: model
+glmboost1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  tuneGrid = glmBoostGrid1,
+  # gradient boosting tree
+  method = "glmboost",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(glmboost1)
+# plot RMSE vs alpha
+plot(glmboost1)
+```
+
+The gradient boosted tree gave us a marginally lower RMSE (\$`r min(glmboost1$results$RMSE)`) than the optimized ridge regression model. *Figure C* shows the number optimal number of boosting iterations for this model was 40. It would be ideal if the gradient boosted tree model ends up having the lowest RMSE on the training data as well since the coefficients are easily interpretable just as in OLS regression. 
+
+
+
+
+
+
+
+*insert table of models and RMSE here* 
