@@ -703,7 +703,7 @@ Table: Table 4: Test RMSE of Machine Learning Models
 
 &nbsp;
 
-From Table 4, we can see that the rf1 and rf2 are likely the strongest and most reliable prediction models, as they much lower RMSE values than the other models.
+From Table 4, we can see that the rf1 and rf2 are likely the strongest and most reliable prediction models, as they much lower RMSE values than the other models. However, we do not use rf2 as it is merely the same model as rf1. Model rf2 was the same as the first in that there were no zero variance predictors to remove and a difference grid search was run. It would be improper to cherry-pick it as our ideal model for this reason. 
 
 
 # Example Predictions
@@ -738,12 +738,12 @@ If we change the garage size from a `r test_x[1,'garage.cars']` car garage to a 
 
 # Limitations
 
-These models are primarily limited by external validity. The data is limited to Ames, Iowa from 2006 to 2010, and our tests of prediction ability (RMSE) was conducted using test data from Ames, Iowa. Applying these models to other areas, like New York City, to commercial markets, or to time periods before 2006 or after 2010. Additionally, the financial crisis of 2006 and 2012 may make these models specific to this time period and region. Future work may compare Ames, Iowa to other housing markets or develop a model based off housing data from a larger region or at a national scope. This difficulty in developing these datasets is consistency in variables across regions, especially for subject features, like overall house quality (`overall.qual`).
+Our model is primarily constrained by external validity. The training data is limited to Ames, Iowa from 2006 to 2010, and our measure of prediction ability (RMSE) was conducted using test data from Ames, Iowa. Applying this model to other areas, such as New York City, to commercial markets, or to time periods before 2006 or after 2010, would likely create inaccurate predictions. Additionally, the financial crisis of 2006 and 2012 may make these models specific to this time period and region. Future work may compare Ames, Iowa to other housing markets or develop a model based off housing data from a larger region or at a national scope. This difficulty in developing these datasets is consistency in variables across regions, especially for subject features, like overall house quality (`overall.qual`).
 
 
 # Conclusion
 
-We attempted to several approaches for modeling. We found that OLS linear regression models failed to match all the assumptions needed for proper interpretations. However, a regression model does allow us to understand some factors that are important to sale price, such as overall house quality and neighborhood. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for prediction ability. The most robust models was the random forest model (modelrf1, RMSE: \$`r round(RMSE_rf1, 2)`).
+We attempted to several approaches for modeling. We found that OLS linear regression models failed to match all the assumptions needed for proper interpretation. However, a regression model does allow us to understand that some variables are important to sale price, such as overall house quality and neighborhood. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for prediction ability. The most robust model was the random forest model (modelrf1, RMSE: \$`r round(RMSE_rf1, 2)`).
 
 
 # References
