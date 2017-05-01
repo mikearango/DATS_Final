@@ -513,7 +513,7 @@ plot(varImp(modelrf1), top = 20)
 Next, we decided to remove the zero variance predictors before running the next random forest regression to see if this results in a lower training RMSE. Since we removed zero variance predictors, the number of variables in the dataset decreased. Thus, we had to run a new grid search when we ran the second random forest model. But, it's worth noting that the regression output shows no variables were actually removed after pre-processing.
 Regardless, these modifications made the model slightly worse and increased the RMSE to $46327.18. We hypothesize that this is because we ran a smaller grid search since we would expect a handful of variables to be zero variance predictors in a dataset this large.  
 
-```{r rf2, eval = FALSE}
+```{r rf2, echo = FALSE}
 set.seed(1760)
 # train the model 
 modelrf2 <- train(
@@ -534,7 +534,7 @@ modelrf2 <- train(
 
 In an effort to reduce the dimensionality of the dataset, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis (PCA) before feeding the data into the third random forest model. 
 
-```{r rf3, eval = FALSE}
+```{r rf3, echo = FALSE}
 set.seed(17)
 # train the model 
 modelrf3 <- train(
@@ -676,7 +676,7 @@ The gradient boosted tree gave us a marginally lower RMSE (\$`r min(glmboost1$re
 
 To compare models in which we cross-validated on the same folds, we decided make a list of all the models and their results. Then we used the `resamples` function in the `caret` package to take bootstrap samples of the model results. This allows us to make statistical inferences about the performance differences between the models. Below, *Figure D* shows a box-and-whisker plot of the RMSE of the bootstrap samples of our models and *Figure E* shows a box-and-whisker plot of the $R^2$ of the bootstrap samples. 
 
-```{r model list, eval = FALSE}
+```{r model list, echo = FALSE}
 # Create model_list
 model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, `elastic net` = enet1, 
                    ridge = ridge, knn = knn1, glmboost = glmboost1)
