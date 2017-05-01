@@ -1,7 +1,7 @@
 ---
-title: "Housing Data"
-author: "Michael Arango"
-date: "4/11/2017"
+title: "Cleaning Housing Data From Ames, Iowa"
+author: "Michael Arango, Yeshwant Chillakuru, Jack Crum, Paul Brewster"
+date: "5/1/2017"
 output:
   html_document:
     highlight: textmate
