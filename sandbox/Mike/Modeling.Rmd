@@ -79,7 +79,7 @@ plot(modelrf1)
 print(min(modelrf1$results[['RMSE']]))
 ```
 
-We run a kitchen sink model (includes all independent variables) to start since random forest does its own feature selection. The optimal number of predictors at each split was 52. Next, we decided to remove the zero variance predictors before running the random forest regression. 
+We run a kitchen sink model (includes all independent variables) to start since random forest does its own feature selection. The optimal number of predictors at each split was 62. Next, we decided to remove the zero variance predictors before running the random forest regression. 
 
 ```{r rf2}
 set.seed(1760)
@@ -106,7 +106,7 @@ print(min(modelrf2$results$RMSE))
 plot(modelrf2)
 ```
 
-This actually made the model slightly worse. To decrease dimensionality, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis before feeding the data into the random forest model. 
+This actually made the model slightly worse.  To decrease dimensionality, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis before feeding the data into the random forest model. 
 
 ```{r rf3}
 set.seed(17)
@@ -133,34 +133,7 @@ print(min(modelrf3$results$RMSE))
 plot(modelrf3)
 ```
 
-The third random forest model resulted in the best model so far. Next, we ran a similar model but removed all zero variance predictors before normalizing and running PCA instead of near-zero variance predictors to see if this made a difference. 
-
-```{r rf4}
-set.seed(789)
-# train the model 
-modelrf4 <- train(
-  # formula
-  saleprice ~ .,
-  # data
-  training,
-  # fast random forest
-  method = "ranger",
-  # grid search for optimal number of columns to randomly sample at each split
-  tuneGrid = data.frame(mtry = seq(2, 12, 1)),
-  # preProcess
-  preProcess = c("zv", "center", "scale"),
-  # set trainCrol as our custom object
-  trControl = myControl
-)
-# print the model summary
-print(modelrf4)
-# print results from the model
-print(min(modelrf4$results$RMSE))
-# plot
-plot(modelrf4)
-```
-
-Removing zero variance predictors as opposed to near-zero variance predictors before centering, scaling, increased decreased the RMSE slightly. 
+The third random forest model resulted in the worst model so far. Next, we ran a similar model but removed all zero variance predictors before normalizing and running PCA instead of near-zero variance predictors to see if this made a difference. 
 
 ## Elastic Net Regularization
 
@@ -329,7 +302,7 @@ print(min(glmboost1$results$RMSE))
 
 ```{r}
 # Create model_list
-model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, rf4 = modelrf4, elastic1 = enet1, 
+model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, elastic1 = enet1, 
                    elastic2 = enet2, forward1 = forward_model, mixed = mixed_model, 
                    knn = knn1, glmboost = glmboost1)
 # Pass model_list to resamples(): resamples

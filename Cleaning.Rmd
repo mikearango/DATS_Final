@@ -37,7 +37,7 @@ library(caret)
 ```{r df summary, message = FALSE}
 # commented out the version Paul needs to use to run and kept normal implementation
 # df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE, perl = "C:/Strawberry/perl/bin/perl.exe")
-df <- read.xls('./data/AmesHousing.xls', stringsAsFactors = FALSE)
+df <- read.xls('./original_data/AmesHousing.xls', stringsAsFactors = FALSE)
 glimpse(df)
 ```
 
@@ -1152,7 +1152,7 @@ init <- dim(df)[1]
 ggplot(df, aes(x = saleprice)) + 
   geom_histogram(fill = "#81AC9B", col = "black", bins = 55) + 
   scale_x_continuous(name = "Sale Price", labels = dollar, limits = c(0, 800000)) + 
-  ggsave(filename = "HistSaleprice.png")
+  ggsave(filename = "HistSaleprice.png", width = 5, height = 5)
 # remove outliers
 outlierMinMax <- quantile(df$saleprice, c(.01, .99))
 df <- df[ df$saleprice > outlierMinMax[1] & df$saleprice < outlierMinMax[2],  ]
