@@ -10,8 +10,11 @@ output:
     fontsize: 11
 ---
 
-```{r setup, include = FALSE, message = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r init, include = FALSE, message = FALSE}
 # packages needed for modeling
 # install.packages("e1071")
 # install.packages("ranger")
