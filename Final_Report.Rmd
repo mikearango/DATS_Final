@@ -724,16 +724,16 @@ stargazer(prediction_rf1_test, type="html", title="Table 5: Prediction Results",
 
 ## Prediction for individual house
 
-Using the following input paramters (from the 1st observation of the test data), the modelrf1 predicts the sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`. The true price of this house is $`r round(test_y[1,], 2)`.
+Using the following input paramters (from an observation of the test data), the modelrf1 predicts the sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`. The true price of this house is $`r round(test_y[1,], 2)`.
 
 ```{r example1, echo=FALSE}
-test_x[1,]
+test_x[22,]
 
-update_test_x_1 <- test_x[1,]
+update_test_x_1 <- test_x[22,]
 update_test_x_1$garage.cars <- 3
 ```
 
-If we change the garage size from a `r test_x[1,'garage.cars']` car garage to a 3 car garage, model rf1 predicts price to increase to \$`r round(predict(modelrf1, update_test_x_1),2)` (a `r round( (predict(modelrf1, update_test_x_1) - predict(modelrf1, test_x[1,]) )/predict(modelrf1, test_x[1,]),4)*100`% change in sale price).
+If we change the garage size from a `r test_x[22,'garage.cars']` car garage to a 3 car garage, model rf1 predicts price to increase to \$`r round(predict(modelrf1, update_test_x_1))` (a `r round( (predict(modelrf1, update_test_x_1) - predict(modelrf1, test_x[22,]) )/predict(modelrf1, test_x[22,]),4)*100`% change in sale price).
 
 
 # Limitations
