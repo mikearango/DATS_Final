@@ -125,7 +125,7 @@ pred.all <- predict(all.model, df_test)
 RMSE.all <- sqrt(mean((pred.all - test_y)^2))
 ```
 
-The test RMSE of the kitchen sink model with all variables is $30198.86. It is worth noting that we do not cross validate the simpler linear models, so they are not easily comparable to later models in which a robust k-fold cross validation technique is implemented. Moreover, we only look at the test RMSE for the simple linear models to see how our simple models handle new observations that they have not seen before. From the regression output below, we can tell there are several instances of multicollinearity since there are places in which coefficient estimates are not generate and the output tells us the fitted values come from a rank-deficient matrix---this implies the matrix is not full rank which entails the columns are not linearly independent of one another and linear dependence implies we may create columns from linear combinations of one another. Many predictors have high p-values and appear to be statistically insignicant. All predictors that demostrated perfect multicollinearity or have a p-value > 0.2 were dropped to reduce dimensionality and include variables that account for actual variance in the sale price variable as opposed to random noise. Then, we ran the modified model to see if our changes result in a lower prediction RMSE (Table 2: Model 2).   
+The test RMSE of the kitchen sink model with all variables is $30198.86. It is worth noting that we do not cross validate the simpler linear models, so they are not easily comparable to later models in which a robust k-fold cross validation technique is implemented. Moreover, we only look at the test RMSE for the simple linear models to see how our simple models handle new observations that they have not seen before. From the regression output below, we can tell there are several instances of multicollinearity since there are places in which coefficient estimates are not generate and the output tells us the fitted values come from a rank-deficient matrix---this implies the matrix is not full rank which entails the columns are not linearly independent of one another and linear dependence implies we may create columns from linear combinations of one another. Many predictors have high p-values and appear to be statistically insignificant. All predictors that demonstrated perfect multicollinearity or have a p-value > 0.2 were dropped to reduce dimensionality and include variables that account for actual variance in the sale price variable as opposed to random noise. Then, we ran the modified model to see if our changes result in a lower prediction RMSE (Table 2: Model 2).   
 
 ```{r Model 2, echo=FALSE}
 # linear model 2
@@ -175,7 +175,7 @@ img <- readPNG("overallquality.png")
 grid.raster(img)
 ```
 
-In addition to the non-linearity between the independent and dependent variables, the regression output above showed that the full rank assumption is not met---as indicated by `NA` values for regression coefficients and very high VIFs. We plotted several graphs to check the assumptions about the the distribution and correlations of the residuals which can be seen in *Figure 3*. The graph of residuals vs. fitted values shows that there is correlation among the residuals as illustrated by the non-linearlity of the *red* trend line. The second grpah in *Figure 3* is a quantile-quantile plot which shows we have reason to believe the distribution of errors may not be approximately normal. While four of the five assumptions are clearly violated, it seems to be the case that exogeneity of the independent variables still holds as the mean of the residuals is approximately equal to zero. 
+In addition to the non-linearity between the independent and dependent variables, the regression output above showed that the full rank assumption is not met---as indicated by `NA` values for regression coefficients and very high VIFs. We plotted several graphs to check the assumptions about the the distribution and correlations of the residuals which can be seen in *Figure 3*. The graph of residuals vs. fitted values shows that there is correlation among the residuals as illustrated by the non-linearity of the *red* trend line. The second graph in *Figure 3* is a quantile-quantile plot which shows we have reason to believe the distribution of errors may not be approximately normal. While four of the five assumptions are clearly violated, it seems to be the case that exogeneity of the independent variables still holds as the mean of the residuals is approximately equal to zero. 
 
 ```{r fig3, fig.cap = "Figure 3: Residual Plots of the Simple OLS Model to Check Error Term Assumptions", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
 plot(model.3)
@@ -290,7 +290,7 @@ saleprice_MSE.1 <- mean((dPaul.p2[,1]-dPaul.p2[,2])^2, na.rm=TRUE)
 saleprice_RMSE_Paul.2 <- sqrt(saleprice_MSE.1)
 ```
 
-From these two models, we can observe that the overall quality of a house is significant and positively correlated with saleprice at the 1% level. The neighborhood a given house is located in generally has a signifcant impact on sales price in *Model 2* at the 5% level. However, it is worth noting that some neighborhoods appear to be uncorrelated with any change in the sale price. All other variables used in the model appear to have sigiificant relationships with sale price at the 1% level.
+From these two models, we can observe that the overall quality of a house is significant and positively correlated with saleprice at the 1% level. The neighborhood a given house is located in generally has a significant impact on sales price in *Model 2* at the 5% level. However, it is worth noting that some neighborhoods appear to be uncorrelated with any change in the sale price. All other variables used in the model appear to have significant relationships with sale price at the 1% level.
 
 ### Application of Model
 
@@ -333,7 +333,7 @@ pcr.saleprice <- pcr(saleprice ~ ., data=df_train_num, scale = TRUE, validation 
 
 ## Model Selection
 
-After fitting a kitchen sink PCR model to get a baseline evaluation of how the model fits to the data, we performed feature selection. In order to select the number of components we want to use for prediction, we examined the RMSE as we allowed the number of principal components used in the model. The results can be seen in *Figure 5* below. From the regression summary and the validated RMSE plot (*Figure 5*), we see large increases in the explained percentage of variancein sale price and decreases in RMSE are observed from 6 to 7 components, and again from 23 to 24. Thus, we assessed models with 1, 7, and 24 components.  
+After fitting a kitchen sink PCR model to get a baseline evaluation of how the model fits to the data, we performed feature selection. In order to select the number of components we want to use for prediction, we examined the RMSE as we allowed the number of principal components used in the model. The results can be seen in *Figure 5* below. From the regression summary and the validated RMSE plot (*Figure 5*), we see large increases in the explained percentage of variance in sale price and decreases in RMSE are observed from 6 to 7 components, and again from 23 to 24. Thus, we assessed models with 1, 7, and 24 components.  
 
 ```{r validation components, fig.cap = "Figure 5: Boxplot of Sale Price by Neighborhood", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
 validationplot(pcr.saleprice)
@@ -377,7 +377,7 @@ Comparing the 3 Models, we see the following RMSE Values when applying the model
   * Model 2 (7 Component): $`r paste(round(saleprice_RMSE.2))`
   * Model 3 (24 Component): $`r paste(round(saleprice_RMSE.3))`
 
-Model 2 appears to be the best, as Model 3 risks overfitting in exchange for a marginally improved RMSE. This is a clear example of the bias-variance tradeoff in practice. 
+Model 2 appears to be the best, as Model 3 risks overfitting in exchange for a marginally improved RMSE. This is a clear example of the bias-variance trade-off in practice. 
 
 ```{r deleteAllVarYesh, echo=FALSE}
 rm(list=setdiff(ls(), c("saleprice_RMSE.1", "saleprice_RMSE.2", "saleprice_RMSE.3", "saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
@@ -445,7 +445,7 @@ modelrf1 <- train(
 print(modelrf1)
 ```
 
-We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). *Figure 6* shows the optimal number of predictors at each split (mtry) was 62. Using the optimal number of predictors, the model yields a training RMSE of $46347.72 and the importance of the top 20 predictor variables is shown in *Figure 7*.  
+We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). *Figure 6* shows the optimal number of predictors at each split (*mtry*) was 62. Using the optimal number of predictors, the model yields a training RMSE of $46347.72 and the importance of the top 20 predictor variables is shown in *Figure 7*.  
 
 ```{r plotrf1, fig.cap = "Figure 6: Training RMSE of Random Forest by Number of Predictors (mtry)", fig.align = 'center', echo = FALSE}
 # plot the number of randomly selected predictors
@@ -506,7 +506,7 @@ Surprisingly, this model had the highest training RMSE of the three models run t
 
 ## Elastic Net Regularization 
 
-Elastic net regularization is a mixed method model that is closely linked to lasso (least absolute shrinkage and selection operator) and ridge regression. Lasso and ridge regression are two very common ways of dealing with collinearity of variables and can be seen as a subsitute to stepwsie regression and dimensionality reduction techniques. However, each method deals with collinearity differently. Lasso regression penalizes the number of non-zero coefficients whereas ridge regression penalizes the absolute magnitude of the coefficients. Elastic net regularization is a combination of the two models with a parameter $\alpha$, bounded between zero and one, that is referred to as the *mixing* parameter---0 is pure-lasso regression and 1 is pure-ridge regression. Elastic net also has a $\lambda$ paramater which ranges from zero to infinity which is referred to as the *regularization*---this parameter represents the size of the penalty and higher values of lambda correspond to simpler models.[5]
+Elastic net regularization is a mixed method model that is closely linked to lasso (least absolute shrinkage and selection operator) and ridge regression. Lasso and ridge regression are two very common ways of dealing with collinearity of variables and can be seen as a substitute to stepwise regression and dimensionality reduction techniques. However, each method deals with collinearity differently. Lasso regression penalizes the number of non-zero coefficients whereas ridge regression penalizes the absolute magnitude of the coefficients. Elastic net regularization is a combination of the two models with a parameter $\alpha$, bounded between zero and one, that is referred to as the *mixing* parameter---0 is pure-lasso regression and 1 is pure-ridge regression. Elastic net also has a $\lambda$ parameter which ranges from zero to infinity which is referred to as the *regularization*---this parameter represents the size of the penalty and higher values of lambda correspond to simpler models.[5]
 
 [5]: https://www.mathworks.com/help/stats/lasso-and-elastic-net.html
 
@@ -568,7 +568,7 @@ plot(ridge)
 
 ## k-Nearest Neighbors Regression and Gradient Boosting
 
-The *k*-nearest neighbors algorithm is a non-parametric method that can be used for classification or regression. We take the *k* closest examples to the point we are trying to predict via a given distance metric (euclidean, manhattan, minkowski, etc.) and fit the best line between the neighbors. This process is repeated for each point in the model, so it is a technique that is very computationally expensive if used on a larger dataset. It is important to find the right value of *k* as we can easily overfit by picking a *k* that is too low or underfit by picking a *k* that is too high. 
+The *k*-nearest neighbors algorithm is a non-parametric method that can be used for classification or regression. We take the *k* closest examples to the point we are trying to predict via a given distance metric (Euclidean, Manhattan, Malinowski, etc.) and fit the best line between the neighbors. This process is repeated for each point in the model, so it is a technique that is very computationally expensive if used on a larger dataset. It is important to find the right value of *k* as we can easily over-fit by picking a *k* that is too low or under-fit by picking a *k* that is too high. 
 
 ```{r knn, message = FALSE}
 set.seed(579)
@@ -593,7 +593,7 @@ Most of the literature uses a value of *k* between three and nine, but we ran a 
 plot(knn1, xlab = "Maximum Number of Neighbors")
 ```
 
-The last model we decided to run is a gradient boosting linear model that uses penalized least squares regression to optimize the RMSE of our model on the training data. This model starts by fitting an additive model in a forward stepwise manner (similar to a decision tree) and uses the concept of *gradient descent*---minimizing a function by moving in the opposite direction of the gradient---to add new inputs to the model. For the boosting model, we decided not to *prune* our boosted trees and to find the optimal number of boosting iterations (mstop) between between 10 and 150 by increments of 10. 
+The last model we decided to run is a gradient boosting linear model that uses penalized least squares regression to optimize the RMSE of our model on the training data. This model starts by fitting an additive model in a forward stepwise manner (similar to a decision tree) and uses the concept of *gradient descent*---minimizing a function by moving in the opposite direction of the gradient---to add new inputs to the model. For the boosting model, we decided not to *prune* our boosted trees and to find the optimal number of boosting iterations (*mstop*) between between 10 and 150 by increments of 10. 
 
 ```{r glmboost, message = FALSE}
 glmBoostGrid1 = expand.grid(mstop = seq(10, 150, 10),
@@ -691,4 +691,12 @@ k-NN            | $`r round(RMSE_knn, 2)`
 glmboost        | $`r round(RMSE_glmboost, 2)`
 
 Table: Table 4: Test RMSE of Machine Learning Models
+
+
+
+
+
+
+
+
 
