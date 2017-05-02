@@ -710,7 +710,7 @@ From *Table 4*, we can see that the *rf1* and *rf2* are likely the strongest and
 
 ## Prediction on test data
 
-*Table 5* demonstrates the ability of our model to predict the sale price, given specific variables from the test data set. *Table 5* shows the predicted values for median and standard deviation are close to the median of the actual dataset. 
+*Table 5* demonstrates the ability of our model to predict the sale price, given specific variables from the test data set. *Table 5* shows the predicted values for median and standard deviation are close to the median of the actual dataset, and *Figure 13* graphs the predicted sales price against the actual sales prices for the test dataset. *Table 5* shows that our model is fairly strong at predicting, with the predicted median very close to the true median. However, the predicted min and predicted max are nearly \$20,000 and \$50,000 off, demonstrating our model gets weaker when predicted extreme values. This is further demonstrated by *Figure 13*, as we can see the predicted values vary from the true values at low and, especially, high sale prices.
 
 ```{r predict_rf1_rf2, echo=FALSE, results='asis'}
 df_test <- read.csv("test_housing.csv", header = TRUE)
@@ -720,6 +720,13 @@ prediction_rf1_test <- data.frame(df_test$saleprice, pred_rf1)
 prediction_rf1_test <- dplyr::rename(prediction_rf1_test, Actual_SalePrice=df_test.saleprice, modelrf1_SalePrice=pred_rf1)
 # output to table
 stargazer(prediction_rf1_test, type="html", title="Table 5: Prediction Results", header=FALSE, summary.stat=c("n","median", "sd", "min", "max"), digits=2)
+```
+
+
+
+```{r predictionplot, fig.cap = "Figure 13: Predication vs Actual Sale Price (blue line is OLS fit. black line is 45˚ line)", fig.align = 'center', echo = FALSE}
+# plot RMSE vs alpha
+ggplot(data=prediction_rf1_test, aes(x=Actual_SalePrice, y=modelrf1_SalePrice)) + geom_point(alpha=0.2, color="#00b9be") + geom_abline() + geom_smooth(method="lm", color="#00b9be")
 ```
 
 ## Prediction for individual house
