@@ -1,0 +1,749 @@
+---
+title: Using Neighborhood Level Data to Predict the Residential Sale Price of Properties
+  in Ames, Iowa
+author: "Yeshwant Chillakuru, Michael Arango, Jack Crum, Paul Brewster"
+date: "5/1/2017"
+output:
+  html_document:
+    css: style.css
+    fontsize: 11
+    highlight: textmate
+    theme: yeti
+    toc: yes
+bibliography: Final_Report.bib
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r init, include = FALSE, message = FALSE}
+# packages needed for modeling
+# install.packages("e1071")
+# install.packages("ranger")
+# install.packages("png")
+# install.packages("grid")
+# install.packages("glmnet")
+# install.packages("kknn")
+# install.packages("mboost")
+# install.packages("htmlTable")
+library(tidyverse)
+library(stargazer)
+library(pls)
+library(scales)
+library(car)
+library(caret)
+library(png)
+library(grid)
+library(lattice)
+library(e1071)
+library(ranger)
+library(htmlTable)
+
+options(scipen = 999)
+```
+
+# Intro
+
+The 2008 financial crisis affected the lives of everyone in the United States---some more than others---and there is an abundance of retrospective research that seeks to identify which sectors of the economy were hit hardest during this time and why. The first sector that comes to mind is housing as the financial crisis was "characterized by a rise in subprime mortgage delinquencies and foreclosures, and the resulting decline of securities" backed by these subprime mortgages [@mortgage].[1] For this reason, we decided to use our multifaceted data science toolbox to answer meaningful questions about the housing market. The goal of this project is ultimately to build a regression model to predict defined outcomes. So, while we will not be analyzing the housing market from an economic perspective like the majority of the literature, we can offer up a predictive model for academic purposes. 
+
+As a conceptual framework for our research, we adopted Peng and Matsui's epicycles of analysis to iteratively manage the steps of our data analysis [@ArtofDS].[2] After choosing the broad topic of the housing market, we narrowed the scope of our research. This included brainstorming as a team to figure out what specific question we wanted to answer about the housing market. We unanimously decided to predict the sale price of a residential house sale based on common characteristics that a property appraiser or assessor's office would use to assess property value. 
+
+## The Dataset
+
+```{r loaddata, echo = FALSE}
+df <- read.csv("cleaned_housing.csv", header = TRUE)
+df_train <- read.csv("train_housing.csv", header = TRUE)
+df_test <- read.csv("test_housing.csv", header = TRUE)
+```
+
+The dataset we chose for our project contains information from the Ames Assessor’s Office on residential property sales that occurred in Ames, Iowa from 2006 to 2010 [@JSE].[3] The dataset was published in the *Journal of Statistics Education* for students and researchers alike to have an opportunity to practice predictive modeling on messy, real world data. The dataset contains 2930 observations of 80 variables and the unit of observation is a single property sale in Ames, Iowa in a given year.
+
+Of the 80 variables, 23 are nominal, 23 are ordinal, 14 are discrete, and 20 are continuous. The variables included are basic characteristics that anyone wanting to buy a house would be interested in. For the most part, the different variables may be split up into specific groups. In general, the 20 continuous variables relate to  measurements of area dimensions for each observation. These include, among others, the sizes of lots, rooms, porches, and garages. The 14 discrete variables mostly have to do with the number of bedrooms, bathrooms, kitchens, etc. that a given property has. There are several geographic categorical variables that start profiling properties at the individual Parcel ID level and end at the neighborhood level. The rest of the nominal variables identify characteristics of the property and dwelling type/structure. Most of the ordinal variables are rankings of the quality/condition of rooms and lot characteristics. For more information on the variables in the dataset, consult the included `DataDescription.txt` file.
+
+The dataset was fairly messy with regard to the number of missing values and the way levels of categorical variables were organized and coded. In order to tackle the large amount of cleaning required, we thought it was best to split the data into four equal parts---leaving about 20 variables for each team member to clean. So, we changed all variable names to lowercase as some were upper case to standardize them and divided the variables up accordingly. 
+
+There were 13960 missing values in the dataset when we started to clean and analyze it. *Table 1* breaks down the number of missing values by variable. After analyzing the variables with missing data and consulting the aforementioned `DataDescription.txt` file, we noticed that most of the missing values were actually not missing. The documentation states the data curator coded certain variables as `NA` to specify that a house did not have that feature. For example, in the case of the `alley` variable, `NA` means there is `No Alley` access to the property. By recoding these variables, we were able to fix most of the missing values in categorical variables.  
+
+Variable Name   | Number of Missing Values
+----------------|-------------------------
+pool.qc         | 2917
+misc.feature    | 2824         
+alley           | 2732 
+fence           | 2358
+fireplace.qu    | 1422 
+lot.frontage    | 490  
+garage.yr.blt   | 159 
+garage.qual     | 158
+garage.cond     | 158   
+garage.type     | 157
+garage.finish   | 157   
+bsmt.qual       | 79
+bsmt.cond       | 79
+bsmt.exposure   | 79
+bsmtfin.type.1  | 79 
+bsmtfin.type.2  | 79 
+
+Table: Table 1: Number of Missing Values by Variable, Number Missing > 75
+
+The solution to fill missing values for quantitative variables was just as simple. Most of the quantitative variables missing large numbers of values were `NA` because a given house feature was missing as well. For example, all missing values in the `garage.yr.blt` variable were because the house does not have a garage. The same reasoning for missing values applies to the square footage variables. For variables that were not missing a large number of variables we used mode (categorical) and median (quantitative) imputation to fill missing values.
+
+Once the variables were cleaned and all missing values were filled, we performed exploratory data analysis of the data. We noticed that the distribution of sale price was heavily skewed to the right. *Figure 1* illustrates this heavy skewness. These high-end outliers will make it very difficult to accurately predict as they are significantly going to drive up the root mean square error (RMSE) of our predictions. Keeping these observations would have disproportionately penalized the predictions of our model. 
+
+```{r graph1, fig.cap = "Figure 1: Histogram of Sale Price Shows Many High-end Outliers", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
+img <- readPNG("HistSaleprice.png")
+grid.raster(img)
+```
+
+To remedy this issue, we thought of two possible solutions: 1) drop the outlier observations; or 2) linearly transform the saleprice variable by taking the natural logarithm. We ultimately decided to drop the top and bottom one percent of observations as our goal is to predict *typical* sales in Ames, Iowa. Taking the natural logarithm of the sale price would change the scale of our predictions to a logarithmic scale and would abstract the interpretability of model predictions. In total, we only dropped 58 observations by excluding the top and bottom one percent of sale price. 
+
+The cleaned dataset has 2838 observations of 82 variables. This means that we only dropped 92 observations (3.14% of the original data) throughout the cleaning process. After cleaning the data, we used the `caret` package's `createDataPartition` function to split our cleaned dataset into a train and test set. We decided to split 70 percent of the data into train and the remaining 30 percent into test. The three resulting datasets---cleaned, train, and test---can be found in the included project repository (<https://github.com/mikearango/DATS_Final>), along with the data cleaning file, `Cleaning.Rmd`. The knitted data `Cleaning.Rmd` HTML output can be viewed at <http://rpubs.com/yesh747/GW_DATS_Final_Cleaning>.
+
+[1]: http://www.stat.unc.edu/faculty/cji/fys/2012/Subprime%20mortgage%20crisis.pdf
+[2]: cite the *Art of Data Science Book* here
+[3]: *Journal of Statistics Education*, Volume 19, Number 3(2011), accessed April 11, 2017 at www.amstat.org/publications/jse/v19n3/decock.pdf
+
+# Exploratory Data Analysis and Ordinary Least Squares Regression
+
+```{r model preproc, echo = FALSE}
+# specify actual values in test set for model predictions
+test_y <- df_test[, "saleprice"]
+# convert factors to integers in df
+i <- sapply(df, is.factor)
+df[i] <- lapply(df[i], as.integer)
+# convert factors to integers in train set
+i <- sapply(df_train, is.factor)
+df_train[i] <- lapply(df_train[i], as.integer)
+# convert factors to integers in test set
+i <- sapply(df_test, is.factor)
+df_test[i] <- lapply(df_test[i], as.integer)
+```
+
+We decided to begin our post-cleaning analysis and model development process by generating several simple models. Linear models are the first models chosen to examine as they are the easiest to fit and most intuitively interpretable. The first model we decided to create was an ordinary least squares (OLS) model containing all the predictors in the data set. The results of the model can be seen in the regression output below (Table 2: Model 1).
+
+```{r Full Model, warning=FALSE}
+# kitchen sink model
+all.model <- lm(saleprice ~ ., data = df_train)
+# predict on test set
+pred.all <- predict(all.model, df_test)
+RMSE.all <- sqrt(mean((pred.all - test_y)^2))
+```
+
+The test RMSE of the kitchen sink model with all variables is $30198.86. It is worth noting that we do not cross validate the simpler linear models, so they are not easily comparable to later models in which a robust k-fold cross validation technique is implemented. Moreover, we only look at the test RMSE for the simple linear models to see how our simple models handle new observations that they have not seen before. From the regression output below, we can tell there are several instances of multicollinearity since there are places in which coefficient estimates are not generate and the output tells us the fitted values come from a rank-deficient matrix---this implies the matrix is not full rank which entails the columns are not linearly independent of one another and linear dependence implies we may create columns from linear combinations of one another. Many predictors have high p-values and appear to be statistically insignificant. All predictors that demonstrated perfect multicollinearity or have a p-value > 0.2 were dropped to reduce dimensionality and include variables that account for actual variance in the sale price variable as opposed to random noise. Then, we ran the modified model to see if our changes result in a lower prediction RMSE (Table 2: Model 2).   
+
+```{r Model 2, echo=FALSE}
+# linear model 2
+model.2 <- lm(saleprice ~ ms.zoning + lot.area + street + land.contour + land.slope + neighborhood + condition.1 + condition.2 + bldg.type + house.style + overall.qual + overall.cond + year.built + roof.style + exterior.1st + exterior.2nd + mas.vnr.type + mas.vnr.area + exter.qual + bsmt.qual + bsmt.exposure + bsmtfin.sf.1 + bsmtfin.sf.2 + bsmt.unf.sf + heating.qc + x1st.flr.sf + x2nd.flr.sf + bsmt.full.bath + bsmt.half.bath + full.bath + bedroom.abvgr + functional + fireplaces + fireplace.qu + garage.yr.blt + garage.cars + garage.area + wood.deck.sf + enclosed.porch + screen.porch + misc.feature + sale.type + sale.condition + ln.lot.frontage + ln.lot.area, data = df_train)
+# calculate rmse
+pred.2 <- predict(model.2, df_test)
+RMSE.2 <- sqrt(mean((pred.2 - test_y)^2))
+```
+
+```{r vifModel2}
+# calculate variance inflation factors
+vif(model.2)
+```
+
+
+Surprisingly, the RMSE of the modified model increased slightly to \$30200.18. This is most likely because we are no longer overfitting the model as badly as before. As we can see from the variance inflation factors (VIFs), the high levels of multicollinearity between variables has been drastically decreased, but there are still some variables that need to be dropped. As a rule-of-thumb, economists usually drop variables with a VIF of greater than five to tease out multicollinearity between variables. The $R^2$ of the model is equal to 0.874 while the adjusted $R^2$ of the model is equal to 0.871. This shows that despite the high number of predictors variables in the model (45) we have not been penalized heavily since most variables account for a significant amount of variance in sale price. We can further simplify and improve this model by dropping highly correlated variables and insignificant predictors. 
+
+```{r Model 3}
+# linear model 3
+model.3 <- lm(saleprice ~ overall.qual + neighborhood + bldg.type + bsmt.qual + total.bsmt.sf + gr.liv.area + full.bath + half.bath + totrms.abvgrd + kitchen.qual + garage.qual + garage.area + wood.deck.sf + screen.porch + misc.feature, data = df_train)
+# Calculate RMSE on test set
+pred.3 <- predict(model.3, df_test)
+RMSE.3 <- sqrt(mean((pred.3 - test_y)^2))
+```
+
+The most simplistic model still explains about 83 percent of the variation in sale price---only 4 percent less than very complicated models. But, if we look at the difference in the regression coefficients of the three models, the third model has the most reasonable value (about $7,000). Hypothetically, this implies that a typical residential property in Ames, Iowa with none of the included features in the model, would be priced, on average, at about \$7000. This is a much more reasonable assumption than the \$500000 or \$-700000 that the first and second model provide. Thus, even though the most simplistic model has the largest RMSE (\$33777.69) of the three linear models, the third model is the most statistically sound model for prediction.
+
+```{r linreg output, message = FALSE, echo=FALSE, results='asis'}
+stargazer(all.model, model.2, model.3, type = "html", style = "apsr", title=
+            "Table 2: Simple OLS Regressions", digits=2)
+```
+
+## Classical Assumptions of the Ordinary Least Squares Model
+
+From these three simplistic models, we have seen several clues that OLS may not be the best model to predict sale price given the dataset. We hypothesize this is because there are several violations of the classical assumptions of OLS. Ordinary least squares regression models make *five* key assumptions about the data:
+
+  1) *Linearity*: There is a linear relationship between the independent variables and the dependent variable
+  2) *Full rank*: There is no exact linear relationship among any of the independent variables
+  3) *Exogeneity of the independent variables*: The conditional mean of the error given the independent variables is equal to zero. 
+  4) *Homoscedasticity and nonautocorrelation*: Each residual has roughly the same finite variance and is uncorrelated with every other residual
+  5) *Normal Distribution*: The residuals are approximately normally distributed
+
+In the cleaning process, we decided to linearly transform a few variables as the relationship between the explanatory variables and the response variable was not inherently linear (i.e. lot area). Moreover, we found that most of the categorical quality variables were not linearly related to the sale price variable. *Figure 2* clearly illustrates this example as median sale price seems to increase quadratically as the overall quality of a house increases. 
+
+```{r graph2, fig.cap = "Figure 2: Histogram of Sale Price Shows Many High-end Outliers", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
+img <- readPNG("overallquality.png")
+grid.raster(img)
+```
+
+In addition to the non-linearity between the independent and dependent variables, the regression output above showed that the full rank assumption is not met---as indicated by `NA` values for regression coefficients and very high VIFs. We plotted several graphs to check the assumptions about the the distribution and correlations of the residuals which can be seen in *Figure 3*. The graph of residuals vs. fitted values shows that there is correlation among the residuals as illustrated by the non-linearity of the *red* trend line. The second graph in *Figure 3* is a quantile-quantile plot which shows we have reason to believe the distribution of errors may not be approximately normal. While four of the five assumptions are clearly violated, it seems to be the case that exogeneity of the independent variables still holds as the mean of the residuals is approximately equal to zero. 
+
+```{r fig3, fig.cap = "Figure 3: Residual Plots of the Simple OLS Model to Check Error Term Assumptions", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
+plot(model.3)
+```
+
+```{r removeVarsJack, echo=FALSE}
+rm(list = setdiff(ls(), c("RMSE.1", "RMSE.2", "RMSE.all")))
+```
+
+# A Heuristic Approach to Prediction
+
+```{r pfb.intro, echo=FALSE, message = FALSE}
+train_h.Paul <- read.csv("train_housing.csv", header = TRUE)
+test_h.Paul <- read.csv("test_housing.csv", header = TRUE)
+```
+
+In this section, we take a systematic approach to generating a regression model used to predict sales prices of residential properties in Ames, Iowa from 2006 to 2010. This model serves to better understand the factors that influence sales price and can be considered another form of exploratory data analysis. We first sorted the independent variables by their $R^2$ values in a univariate OLS regression with sale price. This was done since we cannot compute the correlation coefficient between a categorical, independent variable and the sale price. By computing the $R^2$ values of high variance predictors, we were able to better understand which variables singularly explain the most variance in sale price. 
+
+```{r pfb.building.ordered.list, warning = FALSE, echo = FALSE}
+# compute and sort by r-squared
+df.Paul <- data.frame(Variable = character(ncol(train_h.Paul)), stringsAsFactors = FALSE)
+for(i in 1:ncol(train_h.Paul)) {
+  df.Paul$Variable[i]<- labels(train_h.Paul)[[2]][[i]]
+  df.Paul$RSquared[i]<- summary(lm(as.formula(paste("saleprice ~", labels(train_h.Paul)[[2]][[i]])),data=train_h.Paul))$r.squared
+}
+# show the top 20
+head(df.Paul[order(df.Paul$RSquared,decreasing=TRUE),],20)
+```
+
+## Analyzing the Correlation Between Residential Sale Price and Neighborhood
+
+Based on the order of the variables above, we see that some variables explain much more variance in the sale price than others. This list suggests that the overall quality of the house, neighborhood the house is located in, and several other factors are relatively important. *Figure 4* sale price varies widely across different neighborhoods, which demonstrates the real estate adage of "location, location, location."  
+
+```{r pfb.neighborhood, echo = FALSE}
+train_h.Paul$neighborhood <- factor(train_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
+test_h.Paul$neighborhood <- factor(test_h.Paul$neighborhood, levels = c("MeadowV" ,"IDOTRR" ,"BrDale" ,"OldTown" ,"BrkSide" ,"Edwards" ,"SWISU" ,"Sawyer" ,"NPkVill" ,"Blueste" ,"NAmes" ,"Mitchel" ,"SawyerW" ,"NWAmes" ,"Gilbert" ,"Greens" ,"Blmngtn" ,"CollgCr" ,"Crawfor" ,"ClearCr" ,"Somerst" ,"Timber" ,"Veenker" ,"NridgHt" ,"StoneBr" ,"NoRidge"))
+```
+
+```{r paul neighbhd fig, fig.cap = "Figure 4: Boxplot of Sale Price by Neighborhood", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
+ggplot(train_h.Paul, aes(x = neighborhood, y = saleprice)) + 
+  geom_boxplot(fill = "#81AC9B") +
+  theme(axis.text.x = element_text(angle = 90, size = 8), legend.position = "none") + 
+  scale_y_continuous("Sale Price", labels = dollar) + 
+  scale_x_discrete("Neighborhood")
+```
+
+```{r pfb.datawrangling, echo = FALSE}
+# In order to better interpret the regression analysis, factor variables are reordered and converted to numeric types relative to their order. For example:
+# no fireplace(1) > unfinished fireplace (2) > finished fireplace (3)
+test_h.Paul$bsmt.qual = as.numeric(factor(test_h.Paul$bsmt.qual, levels = c("No Basement", "Po", "Fa", "TA", "Gd", "Ex")))
+train_h.Paul$bsmt.qual = as.numeric(factor(train_h.Paul$bsmt.qual, levels = c("No Basement", "Po", "Fa", "TA", "Gd", "Ex")))
+# convert
+test_h.Paul$exter.qual = as.numeric(factor(test_h.Paul$exter.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
+train_h.Paul$exter.qual = as.numeric(factor(train_h.Paul$exter.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
+# convert
+test_h.Paul$kitchen.qual = as.numeric(factor(test_h.Paul$kitchen.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
+train_h.Paul$kitchen.qual = as.numeric(factor(train_h.Paul$kitchen.qual, levels = c("Po", "Fa", "TA", "Gd", "Ex")))
+# convert
+test_h.Paul$garage.finish = as.numeric(factor(test_h.Paul$garage.finish, levels = c("None", "Unf", "RFn", "Fin")))
+train_h.Paul$garage.finish = as.numeric(factor(train_h.Paul$garage.finish, levels = c("None", "Unf", "RFn", "Fin")))
+# convert
+test_h.Paul$fireplace.qu = as.numeric(factor(test_h.Paul$fireplace.qu, levels = c("No Fireplace", "Po", "Fa", "TA", "Gd", "Ex")))
+train_h.Paul$fireplace.qu = as.numeric(factor(train_h.Paul$fireplace.qu, levels = c("No Fireplace", "Po", "Fa", "TA", "Gd", "Ex")))
+```
+
+## Regression Analysis
+
+In order to best understand the influence of variables that individually explain relatively large portions of variance in sale price, the following multivariate OLS regression models were run:
+
+```{r pfb.model1, echo = FALSE, results='asis'}
+#model 1
+model.Paul<-lm(saleprice~neighborhood +  
+    bsmt.qual +  
+    total.bsmt.sf +  
+    gr.liv.area +  
+    exter.qual +   
+    kitchen.qual +   
+    garage.area +  
+    garage.finish +   
+    fireplace.qu +  
+    yrs.since.remod + 
+    ln.lot.area
+    , data = train_h.Paul )
+# model 2
+model.Paul2<-lm(saleprice~overall.qual +
+    neighborhood +  
+    bsmt.qual +  
+    total.bsmt.sf +  
+    gr.liv.area +  
+    exter.qual +   
+    kitchen.qual +   
+    garage.area +  
+    fireplace.qu +  
+    yrs.since.remod , data = train_h.Paul )
+# regression output as table
+stargazer(model.Paul, model.Paul2, type="html", style="apsr", digits=2, header=FALSE)
+```
+
+```{r pfb.testmodel1, echo = FALSE}
+# Calculate test rmse
+p1.Paul <- predict(model.Paul, test_h.Paul)
+d.Paul.p1 <- data.frame(p1.Paul, test_h.Paul$saleprice)
+saleprice_MSE.1 <- mean((d.Paul.p1[,1]-d.Paul.p1[,2])^2, na.rm=TRUE)
+saleprice_RMSE_Paul.1 <- sqrt(saleprice_MSE.1)
+```
+
+```{r pfb.testmodel2, echo = FALSE}
+# Calculate test rmse
+Paul2 <- predict(model.Paul2, test_h.Paul)
+dPaul.p2 <- data.frame(Paul2, test_h.Paul$saleprice)
+saleprice_MSE.1 <- mean((dPaul.p2[,1]-dPaul.p2[,2])^2, na.rm=TRUE)
+saleprice_RMSE_Paul.2 <- sqrt(saleprice_MSE.1)
+```
+
+From these two models, we can observe that the overall quality of a house is significant and positively correlated with saleprice at the 1% level. The neighborhood a given house is located in generally has a significant impact on sales price in *Model 2* at the 5% level. However, it is worth noting that some neighborhoods appear to be uncorrelated with any change in the sale price. All other variables used in the model appear to have significant relationships with sale price at the 1% level.
+
+## Application of Model
+
+Using these multivariate OLS regression models to predict sale price in the test data results in fairly low RMSE values. These results can be seen in *Table 3* below. However, these models are likely not strong performers for prediction because of high multicollinearity between the independent variables in the mode. For example, `overall.qual` will be highly correlated with `kitchen.qual` and `exter.qual`. In addition, the neighborhoods with higher prices may be highly correlated with `overall.qual`, `kitchen.qual`, and `exter.qual`. We already saw in the *Exploratory Data Analysis and Ordinary Least Squares Regression* section that OLS is not the best model for predicting sale price given our housing data as many classical assumptions are violated. Nevertheless, the models are important in that they help us to develop an understanding of the variables that influence sale price.
+
+Model           | Test RMSE
+----------------|-------------------------
+Model 1         | \$`r paste(round(saleprice_RMSE_Paul.1))`
+Model 2         | \$`r paste(round(saleprice_RMSE_Paul.2))`
+
+Table: Table 3: Test RMSE of Heuristic Approach OLS Models
+
+```{r removeVarsPaul, echo = FALSE}
+rm(list=setdiff(ls(), c("saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
+```
+
+# Principal Component Regression
+
+Principal Component Regression (PCR) is an application of Principal Component Analysis (PCA) to regression modeling. By creating *components*---orthogonal transformations of possibly correlated variables into sets of uncorrelated variables---we can reduce the dimensionality of the feature space and minimize correlation between independent variables  by opting to use these components in the regression model, in place of the original variables. This can create a better prediction model, with a lower risk of overfitting, than a traditional OLS regression model. However, interpretability of the estimated regression coefficients is lost as each component variable is an orthogonal transformation of the original variables in the dataset. In this section, we use the PCR method to build a more robust and sound predictive model.
+
+## Model Generation
+
+```{r dropfactors, echo = FALSE}
+df_train <- read.csv("train_housing.csv", header = TRUE)
+df_train_num <- df_train
+df_test <- read.csv("test_housing.csv", header = TRUE)
+# drop factors
+for(i in colnames(df_train)){
+  if(is.factor( df_train[[i]] )){
+    df_train_num[[i]] <- NULL
+  }
+}
+```
+
+Because PCR methods work best with numerical data, we decided to drop all factor variables from our training dataset, keeping only integer and numerical datatypes, before running a model. The dataset contains `r dim(df_train_num)[2]` variables after dropping factors. Then, we generated a kitchen sink PCR model using all the remaining variables in the training dataset to predict saleprice. 
+
+```{r modelGeneration}
+pcr.saleprice <- pcr(saleprice ~ ., data=df_train_num, scale = TRUE, validation = "CV")
+```
+
+## Model Selection
+
+After fitting a kitchen sink PCR model to get a baseline evaluation of how the model fits to the data, we performed feature selection. In order to select the number of components we want to use for prediction, we examined the RMSE as we allowed the number of principal components used in the model. The results can be seen in *Figure 5* below. From the regression summary and the validated RMSE plot (*Figure 5*), we see large increases in the explained percentage of variance in sale price and decreases in RMSE are observed from 6 to 7 components, and again from 23 to 24. Thus, we assessed models with 1, 7, and 24 components.  
+
+```{r validation components, fig.cap = "Figure 5: Boxplot of Sale Price by Neighborhood", fig.align = 'center', fig.width = 8, fig.height = 5, echo = FALSE}
+validationplot(pcr.saleprice)
+```
+
+```{r pcrsummary, include = FALSE}
+summary(pcr.saleprice)
+```
+
+## Model Validation
+
+The regression output below compares the summary statistics of the predicted values in the PCR model to the actual values in the test dataset.
+
+```{r modelvaldiation, echo=FALSE, results='asis'}
+# predict RMSE pcr1
+pcr.predict.1 <- predict(pcr.saleprice, df_test, ncomp=1)
+df_predict.1 <- data.frame(pcr.predict.1, df_test$saleprice)
+saleprice_MSE.1 <- mean((df_predict.1[,1]-df_predict.1[,2])^2)
+saleprice_RMSE.1 <- sqrt(saleprice_MSE.1)
+# predict RMSE pcr2
+pcr.predict.2 <- predict(pcr.saleprice, df_test, ncomp=7)
+df_predict.2 <- data.frame(pcr.predict.2, df_test$saleprice)
+saleprice_MSE.2 <- mean((df_predict.2[,1]-df_predict.2[,2])^2)
+saleprice_RMSE.2 <- sqrt(saleprice_MSE.2)
+# predict RMSE pcr3
+pcr.predict.3 <- predict(pcr.saleprice, df_test, ncomp=24)
+df_predict.3 <- data.frame(pcr.predict.3, df_test$saleprice)
+saleprice_MSE.3 <- mean((df_predict.3[,1]-df_predict.3[,2])^2)
+saleprice_RMSE.3 <- sqrt(saleprice_MSE.3)
+# new df
+output_df <- data.frame(df_predict.1$df_test.saleprice, df_predict.1$saleprice.1.comps, df_predict.2$saleprice.7.comps, df_predict.3$saleprice.24.comps)
+# rename df
+output_df <- dplyr::rename(output_df, test_data=df_predict.1.df_test.saleprice, Prediction.1.Component=df_predict.1.saleprice.1.comps, Prediction.7.Component=df_predict.2.saleprice.7.comps, Prediction.24.Component=df_predict.3.saleprice.24.comps)
+# output to table
+stargazer(output_df, type="html", header=FALSE, summary.stat=c("n","median", "sd", "min", "max"), digits=2)
+```
+
+Comparing the 3 Models, we see the following RMSE Values when applying the model to the test dataset:
+
+  * Model 1 (1 Component): $`r paste(round(saleprice_RMSE.1))`
+  * Model 2 (7 Component): $`r paste(round(saleprice_RMSE.2))`
+  * Model 3 (24 Component): $`r paste(round(saleprice_RMSE.3))`
+
+Model 2 appears to be the best, as Model 3 risks overfitting in exchange for a marginally improved RMSE. This is a clear example of the bias-variance trade-off in practice. 
+
+```{r deleteAllVarYesh, echo=FALSE}
+rm(list=setdiff(ls(), c("saleprice_RMSE.1", "saleprice_RMSE.2", "saleprice_RMSE.3", "saleprice_RMSE_Paul.1", "saleprice_RMSE_Paul.2", "RMSE.forward", "RMSE.back", "RMSE.tree", "RMSE.1", "RMSE.2", "RMSE.all")))
+```
+
+# Random Forest Regression, Elastic Net Regularization, and Other Complex Models
+
+## Data Pre-processing
+
+```{r import and preprocess, include = FALSE}
+# read in train and test data
+train_mike <- read.csv("train_housing.csv", header = TRUE)
+test_mike <- read.csv("test_housing.csv", header = TRUE)
+# make a dataframe of all numeric features
+num_features = names(which(sapply(train_mike, is.numeric)))
+df.numeric = train_mike[num_features]
+# make a dataframe of all categorical features
+cat_features = names(which(sapply(train_mike, is.factor)))
+# convert all categorical features to numeric variables for modeling
+train_mike[cat_features] <- sapply(train_mike[cat_features], as.integer)
+test_mike[cat_features] <- sapply(test_mike[cat_features], as.integer)
+# split test into x and y
+test_x <- test_mike %>% dplyr::select(-saleprice)
+test_y <- test_mike %>% dplyr::select(saleprice)
+```
+
+Most complex machine learning models do better if we convert factors to integers when we run models, so we converted all categorical variables to integers. Then we created our own folds to be used in k-fold cross validation (with k = 5) so that we can compare the out-of-sample RMSE of our trained models on the *same* cross validation folds. This ensures we have an apples-to-apples comparison of our models. In addition to making our own folds, we created a custom `trainControl` object so we can specify to use these folds.
+
+```{r folds}
+# set seed for reproducibility
+set.seed(256)
+# create 5 folds to be used in cross validation
+myFolds <- createFolds(train_mike, k = 5)
+# create a custom trainControl object to use our folds; index = myFolds
+myControl = trainControl(verboseIter = FALSE, index = myFolds)
+```
+
+## Modeling
+
+This section deals with some slightly more complicated prediction models. We ran a few random forest regression models, followed by two elastic net regularization models, and finished off with two more specialized models (*k*-NN regression and gradient boosting). 
+
+### Random Forest
+
+Random forests are aggregations of several decision tree models. A single decision tree is very fast but not too accurate. The earlier comparisons between the decision tree and a simple linear model illustrated this. While random forests take longer to run, they are very accurate and robust to overfitting. Random forests improve accuracy by fitting many trees to a bootstrap sample of the original dataset. This is a technique called *bootstrap aggregation* or *bagging*. In addition to making trees by bagging, "random forests change how the classification or regression trees are constructed. In standard trees, each node is split using the best split among all variables [@rf]. In a random forest, each node is split using the best among a subset of predictors randomly chosen at that node."[4] 
+
+[4]:http://www.bios.unc.edu/~dzeng/BIOS740/randomforest.pdf 
+
+```{r rf1, message = FALSE}
+set.seed(12)
+# train the model 
+modelrf1 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  train_mike,
+  # fast random forest
+  method = "ranger",
+  importance = "impurity",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(2, 80, 2)),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model
+print(modelrf1)
+```
+
+We started by running a kitchen sink model (includes all independent variables) since random forest does its own feature selection. Random forest is simple because it only has two hyperparameters we need to worry about---the number of variables in the random subset at each node and the number of trees in the forest. We decided to run a grid search to find the optimal number of variables to include at each split, while leaving the number of trees constant at 500 (the default value). *Figure 6* shows the optimal number of predictors at each split (*mtry*) was 62. Using the optimal number of predictors, the model yields a training RMSE of $46347.72 and the importance of the top 20 predictor variables is shown in *Figure 7*.  
+
+```{r plotrf1, fig.cap = "Figure 6: Training RMSE of Random Forest by Number of Predictors (mtry)", fig.align = 'center', echo = FALSE}
+# plot the number of randomly selected predictors
+plot(modelrf1, xlab = "Number of Randomly Selected Predictors")
+```
+
+```{r plotrf2, fig.cap = "Figure 7: Top 20 Independent Variables by Importance", fig.align = 'center', echo = FALSE}
+# plot 20 most important predictors of modelrf1
+plot(varImp(modelrf1), top = 20)
+```
+
+Next, we decided to remove the zero variance predictors before running the next random forest regression to see if this results in a lower training RMSE. Since we removed zero variance predictors, the number of variables in the dataset decreased. Thus, we had to run a new grid search when we ran the second random forest model. But, it's worth noting that the regression output shows no variables were actually removed after pre-processing.
+Regardless, these modifications made the model slightly worse and increased the RMSE to $46327.18. We hypothesize that this is because we ran a smaller grid search since we would expect a handful of variables to be zero variance predictors in a dataset this large.  
+
+```{r rf2, echo = FALSE}
+set.seed(1760)
+# train the model 
+modelrf2 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  train_mike,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(2, 40, 2)),
+  # preprocess by removing zero variance predictors
+  preProcess = "zv",
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+```
+
+In an effort to reduce the dimensionality of the dataset, we decided to drop near-zero variance predictors, center and scale all remaining variables, and perform a Principal Components Analysis (PCA) before feeding the data into the third random forest model. 
+
+```{r rf3, echo = FALSE}
+set.seed(17)
+# train the model 
+modelrf3 <- train(
+  # formula
+  saleprice ~ .,
+  # data
+  train_mike,
+  # fast random forest
+  method = "ranger",
+  # grid search for optimal number of columns to randomly sample at each split
+  tuneGrid = data.frame(mtry = seq(1, 10, 1)),
+  # preProcess
+  preProcess = c("nzv", "center", "scale", "pca"),
+  # set trainCrol as our custom object
+  trControl = myControl
+)
+# print the model summary
+print(modelrf3)
+```
+
+Surprisingly, this model had the highest training RMSE of the three models run to this point ($50954.65). The regression output shows that 19 variables were removed because they were near-zero variance predictors and the remaining 62 were centered, scaled, and subject to a PCA. This model also explained the least amount of variation in sale price. 
+
+### Elastic Net Regularization 
+
+Elastic net regularization is a mixed method model that is closely linked to lasso (least absolute shrinkage and selection operator) and ridge regression. Lasso and ridge regression are two very common ways of dealing with collinearity of variables and can be seen as a subsitute to stepwsie regression and dimensionality reduction techniques. However, each method deals with collinearity differently. Lasso regression penalizes the number of non-zero coefficients whereas ridge regression penalizes the absolute magnitude of the coefficients. Elastic net regularization is a combination of the two models with a parameter $\alpha$, bounded between zero and one, that is referred to as the *mixing* parameter---0 is pure-lasso regression and 1 is pure-ridge regression. Elastic net also has a $\lambda$ paramater which ranges from zero to infinity which is referred to as the *regularization*---this parameter represents the size of the penalty and higher values of lambda correspond to simpler models [@lasso].[5]
+
+[5]: https://www.mathworks.com/help/stats/lasso-and-elastic-net.html
+
+```{r enet1, message = FALSE}
+set.seed(500)
+# Train glmnet with custom trainControl and tuning: model
+enet1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  # set grid search parameters for alpha
+  tuneGrid = expand.grid(alpha = seq(0,1,0.1), 
+                         lambda = seq(0.0001, 1, 10)),
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmnet",
+  # trainControl
+  trControl = myControl
+)
+# Print model output to console
+print(enet1)
+```
+
+For the first model, we decided to run a grid search for the optimal *mixing* parameter while holding the penalty factor constant. *Figure 8* shows the optimal value of $\alpha$ was one for the grid search we ran. This implies that pure ridge regression will minimize the RMSE of our predictions for the regularization models. Note that we only run a grid search for $0 \leq \alpha \leq 1$ by steps of 0.1. That is, it is entirely possible that $\alpha_{optimal} \in (0.9,1)$ but it would have been more computationally expensive to perform a more robust grid search. Ridge regression results in the lowest training RMSE of the complex models ($44758.84), but this is before we even try to find the RMSE minimizing value of the regularization parameter. 
+
+```{r enet plot, fig.cap = "Figure 8: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
+# plot RMSE vs alpha
+plot(enet1)
+```
+
+Since we found our optimal value of the mixing parameter to be one, we run a pure-ridge regression model as the second regularization model. So, holding $\alpha$ constant and equal to one, we performed a grid search for the RMSE minimizing value of the regularization parameter. Again, a very robust grid search would be computationally expensive, so we performed a grid search for $\lambda \in [0,1000]$ by steps of 1000. 
+
+```{r ridge}
+set.seed(1267)
+# Train glmnet with custom trainControl and tuning: model
+ridge <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  # set grid search parameters for lambda
+  tuneGrid = expand.grid(alpha = 1, 
+                         lambda = (0:15) * 1000),
+  # use glmnet method for lasso, ridge, and elastic net 
+  method = "glmnet",
+  # trainControl
+  trControl = myControl
+)
+# Print model output to console
+print(ridge)
+```
+
+The regression results show that the optimal model drops our training RMSE down to \$41864.39 which is significantly better than before we performed a grid search for the regularization parameter. Below, *Figure 9* shows that $\lambda_{optimal} = 7000$. We can assume that we have at least found a local minimum for $\lambda_{optimal}$ as the figure shows a U-shaped curve for the regularization parameter and the slope of the curve is equal to zero at $\lambda = 7000$. 
+
+```{r ridge plot, fig.cap = "Figure 9: RMSE of Elastic Net Regularization for Varying Levels of the Mixing Parameter", fig.align = 'center', echo = FALSE}
+# plot RMSE vs lambda
+plot(ridge)
+```
+
+### k-Nearest Neighbors Regression and Gradient Boosting
+
+The *k*-nearest neighbors algorithm is a non-parametric method that can be used for classification or regression. We take the *k* closest examples to the point we are trying to predict via a given distance metric (Euclidean, Manhattan, Malinowski, etc.) and fit the best line between the neighbors. This process is repeated for each point in the model, so it is a technique that is very computationally expensive if used on a larger dataset. It is important to find the right value of *k* as we can easily over-fit by picking a *k* that is too low or under-fit by picking a *k* that is too high. 
+
+```{r knn, message = FALSE}
+set.seed(579)
+# Train glmnet with custom trainControl and tuning: model
+knn1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  # knn regression
+  method = "kknn",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(knn1)
+```
+
+Most of the literature uses a value of *k* between three and nine, but we ran a grid search between five and nine for the optimal value of *k*.The training RMSE for *k*-nearest neighbor regression was \$47430.67 which is higher than most of our models. *Figure 10* shows that $k_{max} = 7$ is the value of *k* that optimizes the results of the model on the training data. 
+
+```{r knn plot, fig.cap = "Figure 10: RMSE for Varying Numbers of Maximum Neighbors", fig.align = 'center', echo = FALSE}
+plot(knn1, xlab = "Maximum Number of Neighbors")
+```
+
+The last model we decided to run is a gradient boosting linear model that uses penalized least squares regression to optimize the RMSE of our model on the training data. This model starts by fitting an additive model in a forward stepwise manner (similar to a decision tree) and uses the concept of *gradient descent*---minimizing a function by moving in the opposite direction of the gradient---to add new inputs to the model. For the boosting model, we decided not to *prune* our boosted trees and to find the optimal number of boosting iterations (*mstop*) between between 10 and 150 by increments of 10. 
+
+```{r glmboost, message = FALSE}
+glmBoostGrid1 = expand.grid(mstop = seq(10, 150, 10),
+                           prune = c("no"))
+set.seed(1254)
+# Train glmnet with custom trainControl and tuning: model
+glmboost1 <- train(
+  # formula
+  saleprice ~ ., 
+  # data
+  train_mike,
+  tuneGrid = glmBoostGrid1,
+  # gradient boosting tree
+  method = "glmboost",
+  # trainControl
+  trControl = myControl
+)
+# Print model to console
+print(glmboost1)
+```
+
+The gradient boosted tree gave us a marginally lower RMSE ($41693.69) than the optimized ridge regression model. *Figure 11* shows the number optimal number of boosting iterations for this model was 40. It would be ideal if the gradient boosted tree model ends up having the lowest RMSE on the training data as well since the coefficients are easily interpretable just as in OLS regression. 
+
+```{r glmplot, fig.cap = "Figure 11: RMSE of Gradient Boosted Model at Different Numbers of Boosting Iterations", fig.align = 'center', echo = FALSE}
+# plot RMSE vs alpha
+plot(glmboost1, xlab = "Number of Boosting Iterations")
+```
+
+
+## Model Comparison
+
+To compare models in which we cross-validated on the same folds, we decided make a list of all the models and their results. Then we used the `resamples` function in the `caret` package to take bootstrap samples of the model results. This allows us to make statistical inferences about the performance differences between the models. Below, *Figure 12* shows a box-and-whisker plot of the RMSE of the bootstrap samples of our models and *Figure 13* shows a box-and-whisker plot of the $R^2$ of the bootstrap samples. 
+
+```{r model list, echo = FALSE}
+# Create model_list
+model_list <- list(rf1= modelrf1, rf2 = modelrf2, rf3 = modelrf3, `elastic net` = enet1, 
+                   ridge = ridge, knn = knn1, glmboost = glmboost1)
+# Pass model_list to resamples(): resamples
+resamps <- resamples(model_list)
+# Summarize the results
+summary(resamps)
+```
+
+```{r rmse models, fig.cap = "Figure 12: RMSE of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
+bwplot(resamps, metric = "RMSE")
+```
+
+
+```{r r2models, fig.cap = "Figure 13: R-squared of Bootstrap Samples of The Trained Models", fig.align = 'center', echo = FALSE}
+bwplot(resamps, metric = "Rsquared")
+```
+
+# Evaluation of Cross-Validated Models
+
+```{r rmse function, echo = FALSE}
+# A function to calculate the RMSE for a given model. The function takes 2 inputs: prediction and actual
+# prediction should be a vector of predicted values and actual should be the vector of actual values
+rmse <- function(prediction, actual) {
+  # calculate error
+  error <- prediction - actual
+  # calculate RMSE
+  sqrt(mean(error^2))
+}
+```
+
+```{r calculate predictions rmse, echo = FALSE}
+# Calculate model predictions on test data
+pred_rf1 <- predict(modelrf1, test_x)
+pred_rf2 <- predict(modelrf2, test_x)
+pred_rf3 <- predict(modelrf3, test_x)
+pred_enet <- predict(enet1, test_x)
+pred_ridge <- predict(ridge, test_x)
+pred_knn <- predict(knn1, test_x)
+pred_glmboost <- predict(glmboost1, test_x)
+# Calculate test RMSE 
+RMSE_rf1 <- rmse(pred_rf1, test_y)
+RMSE_rf2 <- rmse(pred_rf2, test_y)
+RMSE_rf3 <- rmse(pred_rf3, test_y)
+RMSE_enet <- rmse(pred_enet, test_y)
+RMSE_ridge <- rmse(pred_ridge, test_y)
+RMSE_knn <- rmse(pred_knn, test_y)
+RMSE_glmboost <- rmse(pred_glmboost, test_y)
+```
+
+We calculated the predicted values of each of our models on the test dataset and calculated the RMSE of each. The results can be seen in *Table 4* below. 
+
+Model Name      | Test RMSE
+----------------|-------------------------
+pcr.1           | $`r round(saleprice_RMSE.1, 2)`
+pcr.7           | $`r round(saleprice_RMSE.2, 2)`
+pcr.24          | $`r round(saleprice_RMSE.3, 2)`
+rf1             | $`r round(RMSE_rf1, 2)`
+rf2             | $`r round(RMSE_rf2, 2)`         
+rf3             | $`r round(RMSE_rf3, 2)`
+elastic net     | $`r round(RMSE_enet, 2)`
+ridge           | $`r round(RMSE_ridge, 2)` 
+k-NN            | $`r round(RMSE_knn, 2)` 
+glmboost        | $`r round(RMSE_glmboost, 2)`
+
+Table: Table 4: Test RMSE of Machine Learning Models
+
+<div style="color:#999999;">** Note that pcr.1, pcr.7, and pcr.24 were cross-validated using the pcr function's built-in instead of the custom folds</div>
+
+&nbsp;
+
+From *Table 4*, we can see that the *rf1* and *rf2* are likely the strongest and most reliable prediction models, as they much lower RMSE values than the other models. However, we do not use *rf2* as it is merely the same model as *rf1*. Model *rf2* was the same as the first in that there were no zero variance predictors to remove and a difference grid search was run. It would be improper to cherry-pick it as our ideal model for this reason. 
+
+
+# Example Predictions
+
+## Prediction on test data
+
+*Table 5* demonstrates the ability of our model to predict the sale price, given specific variables from the test data set. *Table 5* shows the predicted values for median and standard deviation are close to the median of the actual dataset. 
+
+```{r predict_rf1_rf2, echo=FALSE, results='asis'}
+df_test <- read.csv("test_housing.csv", header = TRUE)
+
+prediction_rf1_test <- data.frame(df_test$saleprice, pred_rf1)
+
+prediction_rf1_test <- dplyr::rename(prediction_rf1_test, Actual_SalePrice=df_test.saleprice, modelrf1_SalePrice=pred_rf1)
+# output to table
+stargazer(prediction_rf1_test, type="html", title="Table 5: Prediction Results", header=FALSE, summary.stat=c("n","median", "sd", "min", "max"), digits=2)
+```
+
+## Prediction for individual house
+
+Using the following input paramters (from the 1st observation of the test data), the modelrf1 predicts the sale price to be \$`r round( predict(modelrf1, test_x[1,]),2)`. The true price of this house is $`r round(test_y[1,], 2)`.
+
+```{r example1, echo=FALSE}
+test_x[1,]
+
+update_test_x_1 <- test_x[1,]
+update_test_x_1$garage.cars <- 3
+```
+
+If we change the garage size from a `r test_x[1,'garage.cars']` car garage to a 3 car garage, model rf1 predicts price to increase to \$`r round(predict(modelrf1, update_test_x_1),2)` (a `r round( (predict(modelrf1, update_test_x_1) - predict(modelrf1, test_x[1,]) )/predict(modelrf1, test_x[1,]),4)*100`% change in sale price).
+
+
+# Limitations
+
+Our model is primarily constrained by external validity. The training data is limited to Ames, Iowa from 2006 to 2010, and our measure of prediction ability (RMSE) was conducted using test data from Ames, Iowa. Applying this model to other areas, such as New York City, to commercial markets, or to time periods before 2006 or after 2010, would likely create inaccurate predictions. Additionally, the financial crisis of 2006 and 2012 may make these models specific to this time period and region. Future work may compare Ames, Iowa to other housing markets or develop a model based off housing data from a larger region or at a national scope. This difficulty in developing these datasets is consistency in variables across regions, especially for subject features, like overall house quality (`overall.qual`).
+
+
+# Conclusion
+
+We attempted several approaches for modeling. We found that OLS linear regression models failed to meet all the assumptions needed for proper implementation---gross violations of the classical assumptions result in biased coefficient estimates. Using more complicated predictive models, we sacrificed interpretability of variable coefficients for the sake of a smaller, average prediction error. The most robust model was the random forest model (modelrf1, RMSE: \$`r round(RMSE_rf1, 2)`).
+
+
+# References
